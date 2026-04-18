@@ -13,56 +13,6 @@ const SOURCE_STYLE = {
   amazon:   { bg: 'bg-amber-600', label: 'Amazon' },
 }
 
-const CATEGORY_HINTS = [
-  // Men's
-  { re: /\bkurta\s*set\b|\bkurta\s*pyjama\b/i, label: 'Kurta Set' },
-  { re: /\bsherwani\b/i,                         label: 'Sherwani' },
-  { re: /\bnehru\s+jacket\b/i,                   label: 'Nehru Jacket' },
-  { re: /\bdhoti\b/i,                            label: 'Dhoti' },
-  { re: /\bethnic\s*set\b/i,                     label: 'Ethnic Set' },
-  // Women's
-  { re: /\bkurti\b/i,                            label: 'Kurti' },
-  { re: /\btunic\b/i,                            label: 'Tunic' },
-  { re: /\bsaree\b/i,                            label: 'Saree' },
-  { re: /\blehenga\b|\blehenga\s*choli\b/i,      label: 'Lehenga Choli' },
-  { re: /\bsalwar\b|\bchuridar\b|\bkameez\b|\bsuit\b/i, label: 'Salwar Suit' },
-  // Shared
-  { re: /\bkurta\b/i,                            label: 'Kurta' },
-  { re: /\bpalazzo\b|\bco-?ord\b/i,              label: 'Co-Ord Set' },
-  { re: /\bethnic\s*dress\b|\bdress\b/i,         label: 'Ethnic Dress' },
-  { re: /\banarkali\b/i,                         label: 'Anarkali' },
-]
-
-function inferCategory(title = '') {
-  const value = String(title).trim()
-  if (!value) return null
-  for (const hint of CATEGORY_HINTS) {
-    if (hint.re.test(value)) return hint.label
-  }
-  return null
-}
-
-function inferGender(title = '', category = '') {
-  const text = `${title} ${category}`.toLowerCase()
-  // Strictly avoid showing children products as men/women labels.
-  if (/\b(kids?|boys?|girls?|children|child|infant|toddler)\b/.test(text)) return null
-  // Women checked before Men to avoid "men" matching inside "women"
-  if (/\b(women|woman|ladies|female)\b/.test(text)) return 'Women'
-  if (/\b(men|man|mens|male)\b/.test(text)) return 'Men'
-  if (/\b(saree|lehenga|kurti|anarkali|tunic)\b/.test(text)) return 'Women'
-  if (/\b(sherwani|nehru\s+jacket|dhoti)\b/.test(text)) return 'Men'
-  return null
-}
-
-function normalizeGender(targetGender) {
-  if (!targetGender) return null
-  const v = String(targetGender).toLowerCase()
-  // Only Men/Women - everything else (kids, girls, boys) maps to null
-  if (v.includes('women') || v.includes('female') || v.includes('lady')) return 'Women'
-  if (v.includes('men') || v.includes('male')) return 'Men'
-  return null
-}
-
 function genderBadgeClass(label) {
   if (label === 'Men')   return 'bg-slate-700 text-white'
   if (label === 'Women') return 'bg-rose-600 text-white'
@@ -173,7 +123,7 @@ export default function ProductCard({ product }) {
     fabric,
     product_url,
     category,
-    target_gender = null,
+    target_gender,
     in_stock = true,
     stock_count = null,
     delivery_info = null,
@@ -207,10 +157,10 @@ export default function ProductCard({ product }) {
   const showDiscount = !isSoldOut && normalizedDiscount != null
   const hasPrimaryImage = Boolean(normalizedImageUrl)
   const src = SOURCE_STYLE[source] ?? { bg: 'bg-gray-600', label: source }
-  const displayCategory = category || inferCategory(title)
-  const genderLabel = normalizeGender(target_gender) || inferGender(title, displayCategory)
+  
+  const genderLabel = target_gender
   const badgeClass = genderLabel ? genderBadgeClass(genderLabel) : null
-  const hasOverlay = !isSoldOut && Boolean(displayCategory || color || fabric || source || genderLabel)
+  const hasOverlay = !isSoldOut && Boolean(category || color || fabric || source || genderLabel)
 
   return (
     <article
@@ -253,10 +203,10 @@ export default function ProductCard({ product }) {
           >
             <div className="bg-gradient-to-t from-black/98 via-black/95 to-black/80 backdrop-blur-[2px]
                             px-3.5 pb-3.5 pt-16">
-              {displayCategory && (
+              {category && (
                 <span className="inline-block mb-2 text-[10px] uppercase tracking-wider
                                  border border-gold-400/60 text-gold-300 px-2.5 py-1 rounded-full font-semibold">
-                  {displayCategory}
+                  {category}
                 </span>
               )}
               <div className="space-y-1 mb-2.5">
@@ -307,9 +257,9 @@ export default function ProductCard({ product }) {
           {title}
         </h3>
 
-        {(color || fabric || displayCategory) && (
+        {(color || fabric || category) && (
           <p className="text-xs text-gray-600 truncate font-medium">
-            {[displayCategory, color, fabric].filter(Boolean).join(' | ')}
+            {[category, color, fabric].filter(Boolean).join(' | ')}
           </p>
         )}
 
