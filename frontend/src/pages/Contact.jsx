@@ -1,19 +1,36 @@
 import { useState } from 'react'
-import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiShield } from 'react-icons/fi'
+import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiShield, FiUser } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate submission
-    setTimeout(() => {
+    
+    const formData = new FormData(e.target)
+    
+    try {
+      const response = await fetch("https://formspree.io/f/xvovbjez", {
+        method: "POST",
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        setSubmitted(true)
+      } else {
+        alert("Failed to send message. Please try again or email us directly.")
+      }
+    } catch (err) {
+      alert("Connection error. Please try again.")
+    } finally {
       setLoading(false)
-      setSubmitted(true)
-    }, 1000)
+    }
   }
 
   if (submitted) {
@@ -44,7 +61,6 @@ export default function Contact() {
       <Navbar search="" onSearch={() => {}} productCount={0} />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="grid md:grid-cols-2 gap-12 items-start">
-          {/* Info Side */}
           <div className="space-y-8">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight">Write to Us</h1>
@@ -73,23 +89,40 @@ export default function Contact() {
             </div>
           </div>
 
-          {/* Form Side */}
           <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-xl shadow-maroon-900/5 border border-gray-100 space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Name</label>
+                <div className="relative">
+                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="text" name="name" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="John Doe" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
+                <div className="relative">
+                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="email" name="email" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="john@example.com" />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subject</label>
-              <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subject</label>
+              <select name="subject" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
                 <option>Suggest a Feature</option>
                 <option>Report a Bug</option>
                 <option>General Feedback</option>
-                <option>Business Inquiry</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Your Message</label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Message</label>
               <textarea 
+                name="message"
                 required
-                rows={5}
+                rows={4}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm"
                 placeholder="How can we help?"
               />
@@ -116,7 +149,7 @@ function ContactInfo({ icon, title, detail }) {
         {icon}
       </div>
       <div>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{title}</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{title}</p>
         <p className="text-gray-900 font-semibold">{detail}</p>
       </div>
     </div>
