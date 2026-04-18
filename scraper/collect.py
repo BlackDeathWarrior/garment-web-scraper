@@ -319,7 +319,7 @@ def save_output(products: list[dict]) -> Path:
         shutil.copy2(OUTPUT_FILE, dest)
         log.success("collect", f"Mirrored -> {dest}")
 
-    # Optional: Export to DynamoDB if configured
+    # Export to DynamoDB if configured
     table_name = os.environ.get("AWS_DYNAMODB_TABLE")
     if table_name:
         try:
@@ -333,6 +333,18 @@ def save_output(products: list[dict]) -> Path:
             log.success("aws", "DynamoDB export complete")
         except Exception as e:
             log.error("aws", f"Failed to export to DynamoDB: {e}")
+
+    # Export to S3 if configured (Updates the Live Website)
+    bucket_name = os.environ.get("AWS_S3_BUCKET")
+    if bucket_name:
+        try:
+            import boto3
+            s3 = boto3.client('s3')
+            log.info("aws", f"Uploading latest data to S3 bucket: {bucket_name}")
+            s3.upload_file(str(OUTPUT_FILE), bucket_name, "products.json")
+            log.success("aws", "S3 sync complete - Website is now fresh")
+        except Exception as e:
+            log.error("aws", f"Failed to sync to S3: {e}")
 
     return OUTPUT_FILE
 

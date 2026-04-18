@@ -1,5 +1,5 @@
-﻿import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { FiArrowDown, FiLogOut } from 'react-icons/fi'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import FilterSidebar from '../components/FilterSidebar'
@@ -13,9 +13,10 @@ import {
 } from '../lib/productFilters'
 
 const UI_PREFS_KEY = 'ethnic-threads-ui-prefs-v1'
+const LAST_SCRAPE_KEY = 'ethnic-threads-last-manual-scrape'
 const VALID_PER_PAGE_VALUES = new Set([0, 25, 50, 100])
 const BOTTOM_THRESHOLD_PX = 120
-const SCRAPE_TRIGGER_COOLDOWN_MS = 3 * 60 * 1000
+const MANUAL_COOLDOWN_MS = 5 * 60 * 1000
 
 function loadStoredPrefs() {
   if (typeof window === 'undefined') return {}
@@ -51,16 +52,31 @@ export default function Home() {
     normalizeStoredPerPage(storedPrefs.perPage)
   )
   const [page, setPage] = useState(1)
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [scrapeHint, setScrapeHint] = useState('Admin Session Active')
   const [scrapeBusy, setScrapeBusy] = useState(false)
-  const [waitingForMoreProducts, setWaitingForMoreProducts] = useState(false)
   const [scrapeStatus, setScrapeStatus] = useState({ running: false, pid: null })
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
   
   const navigate = useNavigate()
   const hasLoadedSuccessfully = useRef(false)
-  const lastScrapeTriggerAt = useRef(0)
   const scrapeRequestInFlight = useRef(false)
+
+  // Cooldown logic
+  useEffect(() => {
+    const checkCooldown = () => {
+      const lastScrape = Number(localStorage.getItem(LAST_SCRAPE_KEY) || 0)
+      const now = Date.now()
+      const diff = now - lastScrape
+      if (diff < MANUAL_COOLDOWN_MS) {
+        setCooldownRemaining(Math.ceil((MANUAL_COOLDOWN_MS - diff) / 1000))
+      } else {
+        setCooldownRemaining(0)
+      }
+    }
+    checkCooldown()
+    const timer = setInterval(checkCooldown, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('scraper_auth_token')
@@ -69,11 +85,21 @@ export default function Home() {
 
   const fetchProducts = useCallback(async (initialLoad = false) => {
     try {
-      // In production, this would be an AWS API Gateway call:
-      // const response = await fetch(`${import.meta.env.VITE_API_BASE}/products?page=${page}&perPage=${perPage}...`)
-      const response = await fetch(`/products.json?v=${Date.now()}`, {
-        cache: 'no-store',
-      })
+      const localUrl = `/products.json?v=${Date.now()}`
+      const baseUrl = import.meta.env.VITE_API_BASE || ''
+      const apiUrl = baseUrl ? `${baseUrl}/products` : null
+
+      let response = await fetch(localUrl, { cache: 'no-store' })
+      
+      if (apiUrl) {
+        try {
+          const apiRes = await fetch(apiUrl, { cache: 'no-store' })
+          if (apiRes.ok) response = apiRes
+        } catch (apiErr) {
+          console.warn('API fetch failed, staying with local data', apiErr)
+        }
+      }
+
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
       const payload = await response.json()
@@ -94,11 +120,9 @@ export default function Home() {
 
   useEffect(() => {
     void fetchProducts(true)
-    // Reduce polling frequency significantly to stop lag from re-parsing massive JSON
     const intervalId = setInterval(() => {
       void fetchProducts(false)
-    }, 60_000 * 5) // Poll every 5 minutes instead of 20 seconds
-
+    }, 60_000 * 5)
     return () => clearInterval(intervalId)
   }, [fetchProducts])
 
@@ -115,32 +139,41 @@ export default function Home() {
   }, [search, filters, perPage])
 
   const requestScrapeCycle = async (reason = 'manual') => {
-    const now = Date.now()
-    if (reason === 'scroll' && now - lastScrapeTriggerAt.current < SCRAPE_TRIGGER_COOLDOWN_MS) return
+    if (cooldownRemaining > 0 && reason === 'manual') return
     if (scrapeRequestInFlight.current) return
+    
     scrapeRequestInFlight.current = true
     setScrapeBusy(true)
+    setScrapeHint('Requesting scrape...')
 
     try {
-      const response = await fetch('/api/scrape-cycle', {
+      const baseUrl = import.meta.env.VITE_API_BASE || ''
+      const url = baseUrl ? `${baseUrl}/scrape-cycle` : '/api/scrape-cycle'
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
       })
+      
       if (response.ok) {
-        lastScrapeTriggerAt.current = now
-        setScrapeHint(reason === 'scroll' ? 'Auto-scrape triggered' : 'Scrape started')
-        if (reason === 'scroll') setWaitingForMoreProducts(true)
+        localStorage.setItem(LAST_SCRAPE_KEY, Date.now().toString())
+        setScrapeHint('Scrape started successfully')
+        return { ok: true }
+      } else {
+        const errData = await response.json().catch(() => ({}))
+        setScrapeHint(`Failed: ${errData.error || response.status}`)
+        return { ok: false, reason: 'error', status: response.status }
       }
-    } catch {
-      setScrapeHint('Scraper trigger failed')
+    } catch (err) {
+      setScrapeHint('Connection error - is scraper running?')
+      return { ok: false, reason: 'network-error' }
     } finally {
       scrapeRequestInFlight.current = false
       setScrapeBusy(false)
     }
   }
 
-  // Memoize filtered results to prevent lag during re-renders
   const filtered = useMemo(
     () => filterProducts(products, search, filters),
     [products, search, filters]
@@ -151,6 +184,12 @@ export default function Home() {
     const start = (page - 1) * perPage
     return filtered.slice(start, start + perPage)
   }, [filtered, perPage, page])
+
+  const formatCooldown = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   return (
     <div className="min-h-screen bg-[#faf8f5]">
@@ -203,19 +242,39 @@ export default function Home() {
             onPageChange={setPage}
           />
 
-          <section className="mt-8 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900">Admin Controls</h2>
-            <div className="mt-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {scrapeHint} | Status: {scrapeStatus.running ? 'Scraping...' : 'Idle'}
-              </p>
-              <button
-                onClick={() => requestScrapeCycle('manual')}
-                disabled={scrapeBusy || scrapeStatus.running}
-                className="bg-maroon-700 hover:bg-maroon-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50 transition-all shadow-md"
-              >
-                {scrapeBusy || scrapeStatus.running ? 'Processing...' : 'Trigger Full Scrape'}
-              </button>
+          <section className="mt-8 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden relative">
+            <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  Admin Controls
+                </h2>
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                  <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <strong>Warning:</strong> Avoid clicking too frequently. Rapid requests to e-commerce sites can get your 
+                    Cloud IP blocked permanently. Please use manual triggers only when necessary.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center md:items-end gap-3 shrink-0">
+                <button
+                  onClick={() => requestScrapeCycle('manual')}
+                  disabled={scrapeBusy || scrapeStatus.running || cooldownRemaining > 0}
+                  className="bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 min-w-[200px] justify-center"
+                >
+                  {cooldownRemaining > 0 ? (
+                    <>
+                      <FiClock size={16} /> Wait {formatCooldown(cooldownRemaining)}
+                    </>
+                  ) : (
+                    scrapeBusy ? 'Processing...' : 'Trigger Full Scrape'
+                  )}
+                </button>
+                <p className="text-[11px] font-medium text-gray-400">
+                  {scrapeHint}
+                </p>
+              </div>
             </div>
           </section>
         </main>

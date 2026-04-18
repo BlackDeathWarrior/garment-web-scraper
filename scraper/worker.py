@@ -293,7 +293,7 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Local scraper worker")
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--sources", default=DEFAULT_SOURCES)
     parser.add_argument("--max-products", type=int, default=0)

@@ -66,7 +66,7 @@ Follow these steps to take your project from your local computer to the live web
 1.  Search for **S3** in the AWS Console.
 2.  Click **Create bucket**.
 3.  **Bucket name**: `ethnic-threads-frontend-[your-name]` (must be unique).
-4.  **Object Ownership**: ACLs enabled.
+4.  **Object Ownership**: ACLs enabled. 
 5.  **Block Public Access**: Uncheck "Block all public access" (we need the web to see it!).
 6.  Click **Create bucket**.
 
@@ -77,6 +77,15 @@ Follow these steps to take your project from your local computer to the live web
 4.  Go to your S3 bucket in the AWS Console and click **Upload**.
 5.  Drag and drop all files **inside** the `dist` folder into the upload area.
 6.  After uploading, select all files, click **Actions** -> **Make public using ACL**.
+
+### Part C: HTTPS & Mobile Access (CloudFront)
+1.  Search for **CloudFront** in the AWS Console.
+2.  Click **Create distribution**.
+3.  **Origin domain**: Select your S3 bucket.
+4.  **Viewer protocol policy**: Select **Redirect HTTP to HTTPS**.
+5.  **Default root object**: Type `index.html`.
+6.  Click **Create distribution**.
+7.  Wait 5-10 minutes. Use the **Distribution Domain Name** to view your site on your phone.
 
 ---
 
