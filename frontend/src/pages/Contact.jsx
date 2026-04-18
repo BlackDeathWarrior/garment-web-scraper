@@ -10,13 +10,21 @@ export default function Contact() {
     e.preventDefault()
     setLoading(true)
     
-    const formData = new FormData(e.target)
+    // Extract data from the form
+    const form = e.target
+    const data = {
+      name: form.name.value,
+      email: form.email.value,
+      subject: form.subject.value,
+      message: form.message.value
+    }
     
     try {
-      const response = await fetch("https://formspree.io/f/xpwwnvbo", {
+      const response = await fetch("https://formspree.io/f/mldgdrgo", {
         method: "POST",
-        body: formData,
+        body: JSON.stringify(data),
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       })
@@ -24,10 +32,11 @@ export default function Contact() {
       if (response.ok) {
         setSubmitted(true)
       } else {
-        alert("Failed to send message. Please try again or email us directly.")
+        const result = await response.json()
+        alert(result.error || "Failed to send message. Please verify your email first.")
       }
     } catch (err) {
-      alert("Connection error. Please try again.")
+      alert("Connection error. Please check your internet and try again.")
     } finally {
       setLoading(false)
     }
