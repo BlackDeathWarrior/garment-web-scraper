@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FiTerminal, FiX, FiPlay, FiActivity } from 'react-icons/fi'
 
 const LOG_URL = '/scraper.log'
@@ -17,10 +17,16 @@ function lineClass(line) {
   return 'text-slate-200'
 }
 
-function statusPill(running) {
-  return running
-    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-    : 'bg-slate-800 text-slate-300 border border-slate-700'
+function statusPill(status) {
+  if (status.running) return 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+  if (status.last_exit_code && status.last_exit_code !== 0) return 'bg-rose-950 text-rose-300 border border-rose-800'
+  return 'bg-slate-800 text-slate-300 border border-slate-700'
+}
+
+function statusText(status) {
+  if (status.running) return `Running${status.pid ? ` (pid ${status.pid})` : ''}`
+  if (status.last_exit_code && status.last_exit_code !== 0) return 'Crashed (Exited with Error)'
+  return 'Idle'
 }
 
 export default function ScraperLog({ onRunScrape }) {
@@ -28,7 +34,7 @@ export default function ScraperLog({ onRunScrape }) {
   const [lines, setLines] = useState([])
   const [lastFetch, setLastFetch] = useState(null)
   const [fetchError, setFetchError] = useState(null)
-  const [status, setStatus] = useState({ running: false, pid: null })
+  const [status, setStatus] = useState({ running: false, pid: null, last_exit_code: null })
   const [actionMessage, setActionMessage] = useState('')
   const [runBusy, setRunBusy] = useState(false)
 
@@ -160,8 +166,8 @@ export default function ScraperLog({ onRunScrape }) {
       >
         <FiTerminal size={17} />
         <span>Scraper Terminal</span>
-        <span className={`text-[11px] px-2.5 py-1 rounded-md ${statusPill(status.running)}`}>
-          {status.running ? 'Running' : 'Idle'}
+        <span className={`text-[11px] px-2.5 py-1 rounded-md ${statusPill(status)}`}>
+          {status.running ? 'Running' : (status.last_exit_code && status.last_exit_code !== 0 ? 'Crashed' : 'Idle')}
         </span>
       </button>
 
@@ -174,8 +180,8 @@ export default function ScraperLog({ onRunScrape }) {
           <div className="flex items-center gap-3 px-4 py-3 bg-[#131c2e] border-b border-slate-700 flex-shrink-0">
             <FiActivity className="text-cyan-300" size={16} />
             <span className="font-mono text-sm text-slate-200">scraper.log</span>
-            <span className={`text-xs px-2 py-0.5 rounded-md ${statusPill(status.running)}`}>
-              {status.running ? `Running${status.pid ? ` (pid ${status.pid})` : ''}` : 'Idle'}
+            <span className={`text-xs px-2 py-0.5 rounded-md ${statusPill(status)}`}>
+              {statusText(status)}
             </span>
             <span className="ml-auto text-xs text-slate-400">
               {lastFetch ? `Updated ${lastFetch.toLocaleTimeString()}` : 'Waiting for logs'}
@@ -186,12 +192,14 @@ export default function ScraperLog({ onRunScrape }) {
             <button
               onClick={triggerRun}
               disabled={runBusy || status.running}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm
-                         bg-maroon-700 hover:bg-maroon-800 text-white border border-maroon-600
-                         disabled:opacity-45 disabled:cursor-not-allowed"
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold border transition-all
+                         ${status.last_exit_code && status.last_exit_code !== 0
+                           ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-500 shadow-lg shadow-rose-900/20'
+                           : 'bg-maroon-700 hover:bg-maroon-800 text-white border-maroon-600'}
+                         disabled:opacity-45 disabled:cursor-not-allowed`}
             >
               <FiPlay size={13} />
-              Run One Scrape
+              {status.last_exit_code && status.last_exit_code !== 0 ? 'Restart Scraper' : 'Run One Scrape'}
             </button>
             <button
               onClick={scrollToBottom}

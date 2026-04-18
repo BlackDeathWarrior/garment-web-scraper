@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock, FiSettings, FiLayout } from 'react-icons/fi'
+import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock, FiSettings, FiLayout, FiPlay } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import FilterSidebar from '../components/FilterSidebar'
@@ -62,7 +62,7 @@ export default function Home() {
   const [page, setPage] = useState(1)
   const [scrapeHint, setScrapeHint] = useState('Admin Session Active')
   const [scrapeBusy, setScrapeBusy] = useState(false)
-  const [scrapeStatus, setScrapeStatus] = useState({ running: false, pid: null })
+  const [scrapeStatus, setScrapeStatus] = useState({ running: false, pid: null, last_exit_code: null })
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   
   // Priority Controls
@@ -75,6 +75,20 @@ export default function Home() {
   
   const userRole = localStorage.getItem('scraper_user_role')
   const isAdmin = userRole === 'admin'
+
+  // Polling status for button state
+  useEffect(() => {
+    if (!isAdmin) return undefined
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`/api/scrape-status?v=${Date.now()}`)
+        if (res.ok) setScrapeStatus(await res.json())
+      } catch {}
+    }
+    fetchStatus()
+    const id = setInterval(fetchStatus, 3000)
+    return () => clearInterval(id)
+  }, [isAdmin])
 
   // Cooldown logic
   useEffect(() => {
@@ -332,12 +346,15 @@ export default function Home() {
                   <div className="flex flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                     <button
                       onClick={() => requestScrapeCycle('manual')}
-                      disabled={scrapeBusy || scrapeStatus.running || cooldownRemaining > 0}
-                      className="w-full sm:w-auto bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 justify-center"
+                      disabled={scrapeBusy || (scrapeStatus.running && !scrapeStatus.last_exit_code)}
+                      className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2 justify-center
+                                 ${scrapeStatus.last_exit_code && scrapeStatus.last_exit_code !== 0
+                                   ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-500 shadow-rose-900/20'
+                                   : 'bg-maroon-700 hover:bg-maroon-800 text-white shadow-maroon-900/10'}`}
                     >
-                      {cooldownRemaining > 0 ? (
+                      {scrapeStatus.last_exit_code && scrapeStatus.last_exit_code !== 0 ? (
                         <>
-                          <FiClock size={16} /> {formatCooldown(cooldownRemaining)}
+                          <FiPlay size={16} /> Restart Scraper (Crashed)
                         </>
                       ) : (
                         scrapeBusy ? 'Triggering...' : 
