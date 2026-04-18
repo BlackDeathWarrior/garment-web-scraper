@@ -93,11 +93,29 @@ export default function ProductModal({ product, onClose }) {
               href={product.product_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="w-full bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-maroon-900/20 flex items-center justify-center gap-2 group"
+              className="w-full bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-maroon-900/20 flex items-center justify-center gap-2 group mb-4"
             >
               <FiShoppingBag className="group-hover:scale-110 transition-transform" />
-              Go to {product.source}
+              Buy at {product.source}
             </a>
+
+            {product.other_sources?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Also Available At</p>
+                {product.other_sources.map((src, i) => (
+                  <a 
+                    key={i}
+                    href={src.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl border border-gray-200 transition-all flex items-center justify-between px-6 group"
+                  >
+                    <span className="capitalize">{src.source}</span>
+                    <span className="text-maroon-700">{RUPEE}{src.price?.toLocaleString('en-IN')}</span>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
