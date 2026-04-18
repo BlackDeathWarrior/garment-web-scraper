@@ -107,6 +107,7 @@ function SpecRow({ label, value }) {
 
 export default function ProductCard({ product, onClick }) {
   const [imgError, setImgError] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
 
   const {
     title,
@@ -133,7 +134,12 @@ export default function ProductCard({ product, onClick }) {
 
   useEffect(() => {
     setImgError(false)
-  }, [product_url, normalizedImageUrl])
+  }, [product_url, normalizedImageUrl, retryKey])
+
+  const handleRetry = (e) => {
+    e.stopPropagation()
+    setRetryKey(k => k + 1)
+  }
 
   const normalizedRating = parseRatingValue(
     rating
@@ -172,13 +178,26 @@ export default function ProductCard({ product, onClick }) {
     >
       <div className="relative overflow-hidden bg-amber-50 aspect-[3/4]">
         <img
-          src={!imgError && hasPrimaryImage ? normalizedImageUrl : FALLBACK_SRC}
+          key={`${product_url}-${retryKey}`}
+          src={!imgError && hasPrimaryImage ? `${normalizedImageUrl}${normalizedImageUrl.includes('?') ? '&' : '?'}retry=${retryKey}` : FALLBACK_SRC}
           alt={title}
           onError={() => setImgError(true)}
           loading="lazy"
           className={`w-full h-full object-cover transition-transform duration-500
                       ${isSoldOut ? 'grayscale' : 'group-hover:scale-105'}`}
         />
+
+        {imgError && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
+             <p className="text-[11px] font-bold text-gray-700 mb-2 uppercase tracking-tighter">Image Load Failed</p>
+             <button
+               onClick={handleRetry}
+               className="bg-maroon-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg hover:bg-maroon-800 transition-colors flex items-center gap-1.5"
+             >
+               <FiInfo size={12} /> Retry Reload
+             </button>
+          </div>
+        )}
 
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">
           {showDiscount && (
