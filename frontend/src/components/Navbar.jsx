@@ -42,9 +42,11 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
             <FiMessageSquare size={16} />
             <span className="hidden md:inline">Write to Us</span>
           </Link>
-          <span className="text-white text-sm hidden sm:block font-semibold">
-            {productCount.toLocaleString()} items
-          </span>
+          {productCount !== undefined && productCount !== null && (
+            <span className="text-white text-sm hidden sm:block font-semibold">
+              {productCount.toLocaleString()} items
+            </span>
+          )}
           <button
             onClick={onMenuToggle}
             aria-label="Toggle filters"

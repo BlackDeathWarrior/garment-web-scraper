@@ -20,7 +20,8 @@ export default function Contact() {
     }
     
     try {
-      const response = await fetch("https://formspree.io/f/mldgdrgo", {
+      // Direct email endpoint triggers automated form creation/activation
+      const response = await fetch("https://formspree.io/f/prithvijay2006@gmail.com", {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
@@ -33,7 +34,7 @@ export default function Contact() {
         setSubmitted(true)
       } else {
         const result = await response.json()
-        alert(result.error || "Failed to send message. Please verify your email first.")
+        alert(result.error || "Failed to send message. Please check your email for activation if this is your first time.")
       }
     } catch (err) {
       alert("Connection error. Please check your internet and try again.")
@@ -45,7 +46,7 @@ export default function Contact() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#faf8f5]">
-        <Navbar search="" onSearch={() => {}} productCount={0} />
+        <Navbar search="" onSearch={() => {}} productCount={null} />
         <div className="max-w-2xl mx-auto px-4 py-20 text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full mb-6">
             <FiCheckCircle size={40} />
@@ -67,7 +68,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5]">
-      <Navbar search="" onSearch={() => {}} productCount={0} />
+      <Navbar search="" onSearch={() => {}} productCount={null} />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="grid md:grid-cols-2 gap-12 items-start">
           <div className="space-y-8">
