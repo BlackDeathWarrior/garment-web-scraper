@@ -158,9 +158,9 @@ export default function ProductCard({ product }) {
   const hasPrimaryImage = Boolean(normalizedImageUrl)
   const src = SOURCE_STYLE[source] ?? { bg: 'bg-gray-600', label: source }
   
-  const genderLabel = target_gender
-  const badgeClass = genderLabel ? genderBadgeClass(genderLabel) : null
-  const hasOverlay = !isSoldOut && Boolean(category || color || fabric || source || genderLabel)
+  // Unisex Support: Render multiple badges
+  const genders = target_gender === 'Unisex' ? ['Men', 'Women'] : [target_gender].filter(Boolean)
+  const hasOverlay = !isSoldOut && Boolean(category || color || fabric || source || genders.length)
 
   return (
     <article
@@ -186,13 +186,14 @@ export default function ProductCard({ product }) {
               {normalizedDiscount}% OFF
             </span>
           )}
-          {badgeClass && (
+          {genders.map(g => (
             <span
-              className={`${badgeClass} text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide shadow`}
+              key={g}
+              className={`${genderBadgeClass(g)} text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide shadow`}
             >
-              {genderLabel}
+              {g}
             </span>
-          )}
+          ))}
         </div>
 
         {hasOverlay && (
@@ -210,7 +211,7 @@ export default function ProductCard({ product }) {
                 </span>
               )}
               <div className="space-y-1 mb-2.5">
-                {genderLabel && <SpecRow label="For" value={genderLabel} />}
+                {genders.length > 0 && <SpecRow label="For" value={genders.join(' & ')} />}
                 {color && <SpecRow label="Color" value={color} />}
                 {fabric && <SpecRow label="Fabric" value={fabric} />}
                 {source && <SpecRow label="Via" value={src.label} />}

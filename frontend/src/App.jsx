@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Contact from './pages/Contact'
 
 // Simple protected route helper
 function ProtectedRoute({ children }) {
@@ -15,6 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/"
           element={
