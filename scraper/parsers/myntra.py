@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import re
 from typing import Callable, Optional
 
@@ -363,6 +363,7 @@ class MyntraParser(BaseParser):
             image_url = (
                 img.get("src")
                 or img.get("data-src")
+                or img.get("data-original")
                 or _extract_first_src_from_srcset(img.get("srcset") or img.get("data-srcset"))
             )
 
@@ -427,7 +428,7 @@ def _parse_int(text: str) -> Optional[int]:
 def _parse_count(text: str) -> Optional[int]:
     if not text:
         return None
-    t = str(text).replace(",", "").strip().lower()
+    t = str(text).replace(",", "").replace("(", "").replace(")", "").strip().lower()
     match = re.search(r"(\d+(?:\.\d+)?)\s*([km]?)", t)
     if not match:
         return _parse_int(t)

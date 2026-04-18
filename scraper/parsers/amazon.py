@@ -250,7 +250,11 @@ class AmazonParser(BaseParser):
         if not asin:
             return None
 
-        title_tag = card.select_one("h2 a span") or card.select_one(".a-text-normal")
+        title_tag = (
+            card.select_one("h2 a span") 
+            or card.select_one(".a-text-normal")
+            or card.select_one("span.a-size-base-plus.a-color-base.a-text-normal")
+        )
         title = title_tag.get_text(strip=True) if title_tag else None
         if not title:
             return None
@@ -287,11 +291,17 @@ class AmazonParser(BaseParser):
         if current and original and original > current:
             disc = round((1 - current / original) * 100)
 
-        img = card.select_one("img.s-image") or card.select_one("img[src]")
-        image_url = img.get("src") if img else None
+        img = (
+            card.select_one("img.s-image") 
+            or card.select_one("img[src*='media-amazon']")
+            or card.select_one(".s-image-fixed-height img")
+            or card.select_one("img")
+        )
+        image_url = img.get("src") or img.get("data-src") if img else None
 
         rating_tag = (
             card.select_one("i.a-icon-star-small span.a-icon-alt")
+            or card.select_one(".a-icon-star span.a-icon-alt")
             or card.select_one(".a-icon-alt")
         )
         rating_text = rating_tag.get_text(strip=True) if rating_tag else ""
@@ -301,10 +311,15 @@ class AmazonParser(BaseParser):
             or card.select_one("a.a-link-normal span.a-size-base")
             or card.select_one("span[aria-label*='ratings']")
             or card.select_one(".a-size-base.s-light-weight-text")
+            or card.select_one(".a-link-normal .a-size-base")
         )
         rating_count_text = count_tag.get_text(strip=True) if count_tag else ""
 
-        brand_tag = card.select_one(".a-size-base-plus")
+        brand_tag = (
+            card.select_one(".a-size-base-plus")
+            or card.select_one(".s-line-clamp-1 .a-size-base-plus")
+            or card.select_one("h5.s-line-clamp-1 span")
+        )
         brand = brand_tag.get_text(strip=True) if brand_tag else None
         if brand and (len(brand) > 60 or re.match(r"^(rs\.?|inr|\$)", brand, re.I)):
             brand = None
@@ -355,7 +370,7 @@ def _parse_rating(text: str) -> Optional[float]:
 def _parse_count(text: str) -> Optional[int]:
     if not text:
         return None
-    t = str(text).replace(",", "").strip().lower()
+    t = str(text).replace(",", "").replace("(", "").replace(")", "").strip().lower()
     match = re.search(r"(\d+(?:\.\d+)?)\s*([km]?)", t)
     if not match:
         return None

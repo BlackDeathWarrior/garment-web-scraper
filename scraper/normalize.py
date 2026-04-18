@@ -1,4 +1,4 @@
-﻿import re
+import re
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -11,6 +11,8 @@ _WOMEN_ONLY_CATEGORIES = {
     r"\banarkali\b",
     r"\bkurti\b",
     r"\btunic\b",
+    r"\bsalwar\b",
+    r"\bpalazzo\b",
 }
 
 # Categories that are definitively men's when no other signal exists
@@ -18,6 +20,7 @@ _MEN_ONLY_CATEGORIES = {
     r"\bsherwani\b",
     r"\bnehru\s+jacket\b",
     r"\bdhoti\b",
+    r"\bpathani\b",
 }
 
 
@@ -39,9 +42,6 @@ def normalize(products: list[RawProduct]) -> list[dict]:
         d["brand"] = _clean_text(d.get("brand") or "") or None
         d["category"] = _clean_text(d.get("category") or "") or _infer_category(d["title"])
 
-        # Always recalculate discount from actual prices.
-        # Scraped discount_percent values (especially Myntra) often store the
-        # absolute saving amount in rupees, not a percentage; never trust them.
         cur = d.get("price_current")
         orig = d.get("price_original")
         if cur and orig and orig > cur:
@@ -50,13 +50,18 @@ def normalize(products: list[RawProduct]) -> list[dict]:
             d["price_original"] = None
             d["discount_percent"] = None
 
+        # Enhanced Gender Logic: Supports Unisex and Fallback
         gender = _normalize_gender(d.get("target_gender")) or _infer_target_gender(
             d["title"], d.get("category")
         )
 
-        # Only keep Men and Women; drop Kids/Girls/Boys/unresolved.
-        if gender not in ("Men", "Women"):
-            continue
+        # Fix: If we still don't know the gender but it's a valid ethnic garment, 
+        # label as Unisex so it's not deleted.
+        if not gender:
+            if d.get("category") or _infer_category(d["title"]):
+                gender = "Unisex"
+            else:
+                continue
 
         d["target_gender"] = gender
         result.append(d)
@@ -136,37 +141,42 @@ def _infer_category(title: str) -> Optional[str]:
 
 
 def _normalize_gender(raw: Optional[str]) -> Optional[str]:
-    """Normalize a raw gender string; returns only Men/Women or None."""
+    """Normalize a raw gender string; returns Men, Women, or Unisex."""
     if not raw:
         return None
     v = str(raw).lower()
-    # Women must be checked before Men because "women" contains "men"
-    if any(x in v for x in ("women", "woman", "ladies", "female")):
+    
+    is_women = re.search(r"\b(women|woman|ladies|female)\b", v)
+    is_men = re.search(r"\b(men|man|male|mens)\b", v)
+    
+    if is_women and is_men:
+        return "Unisex"
+    if is_women:
         return "Women"
-    if any(x in v for x in ("men", "man", "male", "mens")):
+    if is_men:
         return "Men"
+    
     return None
 
 
 def _infer_target_gender(title: str, category: Optional[str] = None) -> Optional[str]:
     text = f"{title or ''} {category or ''}".lower()
 
-    # Strictly exclude children's products from inference.
     if re.search(r"\b(kids?|boys?|girls?|children|child|infant|toddler)\b", text):
         return None
 
-    # Explicit gender keywords. Women checked before Men to avoid false matches.
-    if re.search(r"\b(women|woman|ladies|female)\b", text):
-        return "Women"
-    if re.search(r"\b(men|man|male|mens)\b", text):
-        return "Men"
+    is_women = re.search(r"\b(women|woman|ladies|female)\b", text)
+    is_men = re.search(r"\b(men|man|male|mens)\b", text)
 
-    # Category-based defaults for unambiguously gendered garments
-    for pattern in _WOMEN_ONLY_CATEGORIES:
-        if re.search(pattern, text):
-            return "Women"
-    for pattern in _MEN_ONLY_CATEGORIES:
-        if re.search(pattern, text):
-            return "Men"
+    # Specific category checks for fallback
+    has_women_cat = any(re.search(p, text) for p in _WOMEN_ONLY_CATEGORIES)
+    has_men_cat = any(re.search(p, text) for p in _MEN_ONLY_CATEGORIES)
+
+    if (is_women or has_women_cat) and (is_men or has_men_cat):
+        return "Unisex"
+    if is_women or has_women_cat:
+        return "Women"
+    if is_men or has_men_cat:
+        return "Men"
 
     return None
