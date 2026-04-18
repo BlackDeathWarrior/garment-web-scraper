@@ -1,9 +1,69 @@
-import { FiMail, FiMessageSquare, FiSend, FiShield, FiUser } from 'react-icons/fi'
+import { useState } from 'react'
+import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiShield, FiUser } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 
 export default function Contact() {
-  // Standard HTML form submission is the only way to use direct email addresses 
-  // with Formspree without a pre-generated ID.
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    const form = e.target
+    const data = {
+      name: form.name.value,
+      email: form.email.value,
+      subject: form.subject.value,
+      message: form.message.value
+    }
+    
+    try {
+      const response = await fetch("https://formspree.io/f/xvzdraja", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        setSubmitted(true)
+      } else {
+        const result = await response.json()
+        alert(result.error || "Failed to send message. Please try again.")
+      }
+    } catch (err) {
+      alert("Connection error. Please check your internet and try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-[#faf8f5]">
+        <Navbar search="" onSearch={() => {}} productCount={null} />
+        <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full mb-6">
+            <FiCheckCircle size={40} />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Message Received!</h1>
+          <p className="text-gray-600 mb-8">
+            Thank you for helping us improve Ethnic Threads. We'll get back to you shortly.
+          </p>
+          <button 
+            onClick={() => setSubmitted(false)}
+            className="bg-maroon-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-maroon-800 transition-all"
+          >
+            Send Another Message
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       <Navbar search="" onSearch={() => {}} productCount={null} />
@@ -37,11 +97,7 @@ export default function Contact() {
             </div>
           </div>
 
-          <form 
-            action="https://formspree.io/prithvijay2006@gmail.com" 
-            method="POST"
-            className="bg-white p-8 rounded-3xl shadow-xl shadow-maroon-900/5 border border-gray-100 space-y-6"
-          >
+          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-xl shadow-maroon-900/5 border border-gray-100 space-y-6">
             <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Name</label>
@@ -55,14 +111,14 @@ export default function Contact() {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
                 <div className="relative">
                   <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="email" name="_replyto" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="john@example.com" />
+                  <input type="email" name="email" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="john@example.com" />
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Subject</label>
-              <select name="_subject" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
+              <select name="subject" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
                 <option value="Feature Suggestion">Suggest a Feature</option>
                 <option value="Bug Report">Report a Bug</option>
                 <option value="General Feedback">General Feedback</option>
@@ -82,9 +138,10 @@ export default function Contact() {
 
             <button 
               type="submit"
-              className="w-full bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-maroon-900/20 flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-maroon-900/20 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <FiSend /> Send Message
+              {loading ? 'Sending...' : <><FiSend /> Send Message</>}
             </button>
           </form>
         </div>
