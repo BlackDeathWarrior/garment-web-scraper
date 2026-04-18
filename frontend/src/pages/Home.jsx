@@ -288,7 +288,9 @@ export default function Home() {
                           <FiClock size={16} /> {formatCooldown(cooldownRemaining)}
                         </>
                       ) : (
-                        scrapeBusy ? 'Triggering...' : `Scrape ${scrapePriority.toUpperCase()}`
+                        scrapeBusy ? 'Triggering...' : 
+                        scrapePriority === 'both' ? 'Refresh All Inventory' : 
+                        `Update ${scrapePriority.charAt(0).toUpperCase() + scrapePriority.slice(1)}'s Collection`
                       )}
                     </button>
                     <p className="text-[11px] font-medium text-gray-400">
