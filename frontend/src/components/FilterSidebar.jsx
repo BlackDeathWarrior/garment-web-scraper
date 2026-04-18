@@ -23,6 +23,7 @@ export default function FilterSidebar({
   const brands  = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort()
   const colors  = [...new Set(products.map((p) => p.color).filter(Boolean))].sort()
   const sources = [...new Set(products.map((p) => p.source).filter(Boolean))].sort()
+  const fabrics = [...new Set(products.map((p) => p.fabric).filter(Boolean))].sort()
 
   const filteredBrands = brands.filter(b => 
     b.toLowerCase().includes(brandSearch.toLowerCase())
@@ -35,13 +36,14 @@ export default function FilterSidebar({
   }
 
   const clear = () =>
-    onFiltersChange({ sources: [], brands: [], colors: [], genders: [], sort: 'default' })
+    onFiltersChange({ sources: [], brands: [], colors: [], genders: [], fabrics: [], sort: 'default' })
 
   const activeCount =
     (filters.sources?.length ?? 0) +
     (filters.brands?.length  ?? 0) +
     (filters.colors?.length  ?? 0) +
-    (filters.genders?.length ?? 0)
+    (filters.genders?.length ?? 0) +
+    (filters.fabrics?.length ?? 0)
 
   return (
     <>
@@ -177,6 +179,23 @@ export default function FilterSidebar({
             )}
           </div>
         </Section>
+
+        {/* Fabric */}
+        {fabrics.length > 0 && (
+          <Section title="Fabric">
+            <div className="grid gap-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+              {fabrics.map((f) => (
+                <CheckItem
+                  key={f}
+                  id={`fabric-${f}`}
+                  label={f}
+                  checked={filters.fabrics?.includes(f) ?? false}
+                  onChange={() => toggle('fabrics', f)}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Color */}
         {colors.length > 0 && (
