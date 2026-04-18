@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock } from 'react-icons/fi'
+import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock, FiSettings } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import FilterSidebar from '../components/FilterSidebar'
@@ -57,9 +57,15 @@ export default function Home() {
   const [scrapeStatus, setScrapeStatus] = useState({ running: false, pid: null })
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   
+  // Priority Controls
+  const [scrapePriority, setScrapePriority] = useState('both') // men, women, both
+
   const navigate = useNavigate()
   const hasLoadedSuccessfully = useRef(false)
   const scrapeRequestInFlight = useRef(false)
+  
+  const userRole = localStorage.getItem('scraper_user_role')
+  const isAdmin = userRole === 'admin'
 
   // Cooldown logic
   useEffect(() => {
@@ -80,6 +86,7 @@ export default function Home() {
 
   const handleLogout = () => {
     localStorage.removeItem('scraper_auth_token')
+    localStorage.removeItem('scraper_user_role')
     navigate('/login')
   }
 
@@ -153,12 +160,15 @@ export default function Home() {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ 
+          reason,
+          priority: scrapePriority // Pass priority to backend
+        }),
       })
       
       if (response.ok) {
         localStorage.setItem(LAST_SCRAPE_KEY, Date.now().toString())
-        setScrapeHint('Scrape started successfully')
+        setScrapeHint(`Scrape (${scrapePriority}) started`)
         return { ok: true }
       } else {
         const errData = await response.json().catch(() => ({}))
@@ -194,7 +204,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       <div className="bg-maroon-900 text-white py-1 px-4 flex justify-between items-center text-[10px] uppercase tracking-widest font-bold">
-        <span>Admin Mode: scraper_admin</span>
+        <span>Mode: {isAdmin ? 'Scraper Admin' : 'Registered User'}</span>
         <button onClick={handleLogout} className="flex items-center gap-1 hover:text-amber-400 transition-colors">
           <FiLogOut size={10} /> Logout
         </button>
@@ -242,45 +252,72 @@ export default function Home() {
             onPageChange={setPage}
           />
 
-          <section className="mt-8 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden relative">
-            <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  Admin Controls
-                </h2>
-                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-                  <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    <strong>Warning:</strong> Avoid clicking too frequently. Rapid requests to e-commerce sites can get your 
-                    Cloud IP blocked permanently. Please use manual triggers only when necessary.
-                  </p>
+          {isAdmin && (
+            <section className="mt-8 p-6 rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden relative">
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <FiSettings className="text-maroon-700" /> Admin Scraper Controls
+                  </h2>
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                    <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      <strong>IP Safety:</strong> Manual triggers have a 5-minute cooldown. Use priority to focus on specific inventory needs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-6 justify-between bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div className="space-y-2 w-full sm:w-auto">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Scrape Priority</label>
+                    <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                      <PriorityBtn active={scrapePriority === 'men'} onClick={() => setScrapePriority('men')} label="Men" />
+                      <PriorityBtn active={scrapePriority === 'women'} onClick={() => setScrapePriority('women')} label="Women" />
+                      <PriorityBtn active={scrapePriority === 'both'} onClick={() => setScrapePriority('both')} label="Both" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => requestScrapeCycle('manual')}
+                      disabled={scrapeBusy || scrapeStatus.running || cooldownRemaining > 0}
+                      className="w-full sm:w-auto bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 justify-center"
+                    >
+                      {cooldownRemaining > 0 ? (
+                        <>
+                          <FiClock size={16} /> {formatCooldown(cooldownRemaining)}
+                        </>
+                      ) : (
+                        scrapeBusy ? 'Triggering...' : `Scrape ${scrapePriority.toUpperCase()}`
+                      )}
+                    </button>
+                    <p className="text-[11px] font-medium text-gray-400">
+                      {scrapeHint}
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex flex-col items-center md:items-end gap-3 shrink-0">
-                <button
-                  onClick={() => requestScrapeCycle('manual')}
-                  disabled={scrapeBusy || scrapeStatus.running || cooldownRemaining > 0}
-                  className="bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 min-w-[200px] justify-center"
-                >
-                  {cooldownRemaining > 0 ? (
-                    <>
-                      <FiClock size={16} /> Wait {formatCooldown(cooldownRemaining)}
-                    </>
-                  ) : (
-                    scrapeBusy ? 'Processing...' : 'Trigger Full Scrape'
-                  )}
-                </button>
-                <p className="text-[11px] font-medium text-gray-400">
-                  {scrapeHint}
-                </p>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
         </main>
       </div>
 
-      <ScraperLog onRunScrape={() => requestScrapeCycle('manual')} />
+      {isAdmin && <ScraperLog onRunScrape={() => requestScrapeCycle('manual')} />}
     </div>
+  )
+}
+
+function PriorityBtn({ active, onClick, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
+        active 
+          ? 'bg-maroon-700 text-white shadow-md' 
+          : 'text-gray-500 hover:bg-gray-100'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

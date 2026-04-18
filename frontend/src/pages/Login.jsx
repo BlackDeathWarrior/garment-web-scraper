@@ -20,6 +20,7 @@ export default function Login() {
       // 1. Check Admin
       if (username === 'scraper_admin' && password === adminPass) {
         localStorage.setItem('scraper_auth_token', 'admin_session_active')
+        localStorage.setItem('scraper_user_role', 'admin')
         return navigate('/')
       }
 
@@ -29,6 +30,7 @@ export default function Login() {
       
       if (user) {
         localStorage.setItem('scraper_auth_token', 'user_session_active')
+        localStorage.setItem('scraper_user_role', 'user')
         navigate('/')
       } else {
         setError('Invalid username or password')

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { FiMail, FiLock, FiUser, FiArrowRight } from 'react-icons/fi'
+import { FiMail, FiLock, FiUser, FiArrowRight, FiCheck, FiX } from 'react-icons/fi'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -13,17 +13,27 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  // Password rules validation
+  const rules = {
+    length: formData.password.length >= 8,
+    number: /\d/.test(formData.password),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password),
+  }
+
   const handleRegister = async (e) => {
     e.preventDefault()
     setError('')
     
+    if (!rules.length || !rules.number || !rules.special) {
+      return setError('Please meet all password requirements')
+    }
+
     if (formData.password !== formData.confirmPassword) {
       return setError('Passwords do not match')
     }
 
     setLoading(true)
     try {
-      // Simulation: Save user to localStorage
       const users = JSON.parse(localStorage.getItem('scraper_users') || '[]')
       if (users.find(u => u.username === formData.username)) {
         throw new Error('Username already exists')
@@ -32,8 +42,8 @@ export default function Register() {
       users.push({ username: formData.username, email: formData.email, password: formData.password })
       localStorage.setItem('scraper_users', JSON.stringify(users))
       
-      // Auto login
       localStorage.setItem('scraper_auth_token', 'user_session_active')
+      localStorage.setItem('scraper_user_role', 'user')
       navigate('/')
     } catch (err) {
       setError(err.message || 'Registration failed')
@@ -85,33 +95,39 @@ export default function Register() {
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                <FiLock size={14} /> Password
-              </label>
-              <input
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
-                placeholder="••••••••"
-              />
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FiLock size={14} /> Password
+            </label>
+            <input
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+            />
+            
+            {/* Password Strength Indicator */}
+            <div className="pt-2 grid grid-cols-1 gap-1">
+              <Rule text="At least 8 characters" met={rules.length} />
+              <Rule text="At least one number" met={rules.number} />
+              <Rule text="At least one special character" met={rules.special} />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                <FiLock size={14} /> Confirm
-              </label>
-              <input
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
-                placeholder="••••••••"
-              />
-            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+              <FiLock size={14} /> Confirm Password
+            </label>
+            <input
+              type="password"
+              required
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+            />
           </div>
           
           <button
@@ -136,6 +152,15 @@ export default function Register() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Rule({ text, met }) {
+  return (
+    <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight ${met ? 'text-emerald-600' : 'text-gray-400'}`}>
+      {met ? <FiCheck size={12} /> : <FiX size={12} />}
+      {text}
     </div>
   )
 }
