@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiBug } from 'react-icons/fi'
+import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiShield } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 
 export default function Contact() {
@@ -61,7 +61,7 @@ export default function Contact() {
                 detail="prithvijay2006@gmail.com" 
               />
               <ContactInfo 
-                icon={<FiBug className="text-maroon-700" />} 
+                icon={<FiShield className="text-maroon-700" />} 
                 title="Report a Bug" 
                 detail="Help us squash technical issues" 
               />
@@ -77,7 +77,7 @@ export default function Contact() {
           <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-xl shadow-maroon-900/5 border border-gray-100 space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subject</label>
-              <select className="w-full px-4 py-3 rounded-xl border border-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
+              <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm font-medium">
                 <option>Suggest a Feature</option>
                 <option>Report a Bug</option>
                 <option>General Feedback</option>
