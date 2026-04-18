@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FiTerminal, FiX, FiPlay, FiActivity } from 'react-icons/fi'
 
-const LOG_URL = '/scraper.log'
 const STATUS_URL = '/api/scrape-status'
 const LOG_POLL_MS = 2500
 const STATUS_POLL_MS = 2000
@@ -46,7 +45,10 @@ export default function ScraperLog({ onRunScrape }) {
 
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`${STATUS_URL}?v=${Date.now()}`, { cache: 'no-store' })
+        const baseUrl = import.meta.env.VITE_API_BASE || ''
+        const url = baseUrl ? `${baseUrl}${STATUS_URL}?v=${Date.now()}` : `${STATUS_URL}?v=${Date.now()}`
+        
+        const res = await fetch(url, { cache: 'no-store' })
         if (!res.ok) return
         const payload = await res.json()
         if (!alive) return
@@ -74,7 +76,10 @@ export default function ScraperLog({ onRunScrape }) {
 
     const fetchLog = async () => {
       try {
-        const res = await fetch(`${LOG_URL}?v=${Date.now()}`, { cache: 'no-store' })
+        const baseUrl = import.meta.env.VITE_API_BASE || ''
+        const logUrl = baseUrl ? `${baseUrl}/scraper.log?v=${Date.now()}` : `/scraper.log?v=${Date.now()}`
+
+        const res = await fetch(logUrl, { cache: 'no-store' })
         if (!res.ok) throw new Error(res.status === 404 ? 'not-started' : `HTTP ${res.status}`)
 
         const text = await res.text()
@@ -138,7 +143,10 @@ export default function ScraperLog({ onRunScrape }) {
           setActionMessage('Could not request scrape cycle')
         }
       } else {
-        const res = await fetch('/api/scrape-cycle', { method: 'POST' })
+        const baseUrl = import.meta.env.VITE_API_BASE || ''
+        const url = baseUrl ? `${baseUrl}/api/scrape-cycle` : '/api/scrape-cycle'
+        const res = await fetch(url, { method: 'POST' })
+        
         if (res.status === 409) {
           setActionMessage('Scrape already running')
         } else if (!res.ok) {
