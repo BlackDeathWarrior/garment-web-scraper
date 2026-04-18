@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { FiTerminal, FiX, FiPlay, FiActivity } from 'react-icons/fi'
+import { FiTerminal, FiX, FiPlay, FiActivity, FiSquare } from 'react-icons/fi'
 
 const STATUS_URL = '/api/scrape-status'
+const STOP_URL = '/api/stop-scrape'
 const LOG_POLL_MS = 2500
 const STATUS_POLL_MS = 2000
 const MAX_LINES = 300
@@ -36,6 +37,7 @@ export default function ScraperLog({ onRunScrape }) {
   const [status, setStatus] = useState({ running: false, pid: null, last_exit_code: null })
   const [actionMessage, setActionMessage] = useState('')
   const [runBusy, setRunBusy] = useState(false)
+  const [stopBusy, setStopBusy] = useState(false)
 
   const termRef = useRef(null)
   const atBottom = useRef(true)
@@ -162,6 +164,28 @@ export default function ScraperLog({ onRunScrape }) {
     }
   }
 
+  const triggerStop = async () => {
+    if (stopBusy || !status.running) return
+    setStopBusy(true)
+    setActionMessage('Requesting emergency stop...')
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE || ''
+      const url = baseUrl ? `${baseUrl}${STOP_URL}` : STOP_URL
+      const res = await fetch(url, { method: 'POST' })
+      
+      if (res.ok) {
+        setActionMessage('Scraper stopped manually')
+      } else {
+        setActionMessage(`Stop failed (HTTP ${res.status})`)
+      }
+    } catch {
+      setActionMessage('Could not connect to stop scraper')
+    } finally {
+      setStopBusy(false)
+    }
+  }
+
   return (
     <>
       <button
@@ -209,6 +233,17 @@ export default function ScraperLog({ onRunScrape }) {
               <FiPlay size={13} />
               {status.last_exit_code && status.last_exit_code !== 0 ? 'Restart Scraper' : 'Run One Scrape'}
             </button>
+
+            {status.running && (
+              <button
+                onClick={triggerStop}
+                disabled={stopBusy}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold bg-slate-100 text-rose-700 border border-rose-200 hover:bg-rose-50 transition-all disabled:opacity-50"
+              >
+                <FiSquare size={13} fill="currentColor" /> Stop Scraper
+              </button>
+            )}
+
             <button
               onClick={scrollToBottom}
               className="px-4 py-2 rounded-md text-sm bg-slate-700 text-slate-100 border border-slate-600 hover:bg-slate-600"
