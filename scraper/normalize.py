@@ -23,14 +23,11 @@ _MEN_ONLY_CATEGORIES = {
     r"\bpathani\b",
 }
 
-# STRICT EXCLUSION: Purge non-clothing items
-_BANNED_KEYWORDS = [
-    r"\bnecklace\b", r"\bearring\s*s?\b", r"\bjewellery\b", r"\bjewelry\b",
-    r"\bshoes?\b", r"\bfootwear\b", r"\bsandals?\b", r"\bslippers?\b",
-    r"\bbangle\s*s?\b", r"\bring\b", r"\bpendant\b", r"\bwatch\b",
-    r"\bbags?\b", r"\bwallet\b", r"\bbelt\b", r"\bsunglasses\b",
-    r"\bjewel\b", r"\bheels?\b", r"\bflats?\b", r"\bjhumka\b",
-    r"\bchoker\b", r"\bbracelet\b", r"\banklet\b", r"\bnose\s*ring\b"
+# NUCLEAR EXCLUSION: Substrings that trigger immediate deletion if found anywhere
+_BANNED_SUBSTRINGS = [
+    "shoe", "footwear", "sandal", "slipper", "heel", "flat", "juttis", "mojaris", "loafer", "kolhapuri", "nagras",
+    "necklace", "jewel", "earring", "bangle", "ring", "pendant", "bracelet", "anklet", "jhumka", "choker", "haram",
+    "watch", "wallet", "belt", "sunglasses", "handbag", "purse", "clutch", "nosepin", "nath", "maang", "tika"
 ]
 
 
@@ -43,12 +40,9 @@ def normalize(products: list[RawProduct]) -> list[dict]:
         if not p.is_valid():
             continue
             
-        # 1. Strict Noise Filter (Title and Category)
-        title_lower = (p.title or "").lower()
-        category_lower = (p.category or "").lower()
-        combined_text = f"{title_lower} {category_lower}"
-        
-        if any(re.search(pattern, combined_text) for pattern in _BANNED_KEYWORDS):
+        # 1. Nuclear Noise Filter (Case-insensitive substring match)
+        search_text = (f"{p.title or ''} {p.category or ''}").lower()
+        if any(banned in search_text for banned in _BANNED_SUBSTRINGS):
             continue
 
         key = _dedup_key(p)
