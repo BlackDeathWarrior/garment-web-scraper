@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FiSearch, FiSliders, FiMessageSquare } from 'react-icons/fi'
+import { FiSearch, FiSliders, FiMessageSquare, FiX } from 'react-icons/fi'
 
 export default function Navbar({ search, onSearch, productCount, onMenuToggle }) {
   return (
@@ -28,10 +28,19 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             className="w-full bg-white/20 border border-white/40 text-white placeholder-white/75
-                       rounded-full py-2.5 pl-10 pr-4 text-sm font-medium
+                       rounded-full py-2.5 pl-10 pr-10 text-sm font-medium
                        focus:outline-none focus:bg-white/25 focus:border-white/60
                        transition-all duration-200"
           />
+          {search && (
+            <button
+              onClick={() => onSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+              aria-label="Clear search"
+            >
+              <FiX size={18} />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
