@@ -31,7 +31,8 @@ _BANNED_SUBSTRINGS = [
     "watch", "wallet", "belt", "sunglasses", "handbag", "purse", "clutch", "nosepin", "nath", "maang", "tika",
     "kamarband", "mangalsutra", "gold plated", "silver plated", "oxidised", "jewelry set", "jewellery set",
     "combo set", "combo of", "pack of", "artificial", "beads", "latkan", "tassel", "chain", "ghungroo", "payal",
-    "unstitched", "fabric only", "material only"
+    "unstitched", "fabric only", "material only",
+    "kids", "boys", "girls", "baby", "infant", "toddler", "children"
 ]
 
 
@@ -66,7 +67,6 @@ def normalize(products: list[RawProduct]) -> list[dict]:
             continue
             
         # 1. Nuclear Noise Filter (Case-insensitive substring match)
-        # Explicitly purged 'jhumka' and 'earring'
         search_text = (f"{p.title or ''} {p.category or ''}").lower()
         if any(banned in search_text for banned in _BANNED_SUBSTRINGS + ["jhumka", "earring", "jewel"]):
             continue
@@ -144,6 +144,119 @@ def normalize(products: list[RawProduct]) -> list[dict]:
         merged[merge_key] = d
 
     return list(merged.values())
+
+
+def _dedup_key(p: RawProduct) -> str:
+    source = str(p.source or "").strip().lower()
+    url_norm = _normalize_product_url(p.product_url)
+    if source and url_norm:
+        return f"{source}::{url_norm}"
+
+    title_norm = re.sub(r"\s+", " ", (p.title or "").lower().strip())[:120]
+    return f"{source}::{title_norm}"
+
+
+def _normalize_product_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    value = str(url).strip()
+    if not value:
+        return None
+
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return value.rstrip("/").lower()
+
+    if not parts.scheme or not parts.netloc:
+        return value.rstrip("/").lower()
+
+    clean_path = re.sub(r"/+", "/", parts.path or "/").rstrip("/") or "/"
+    return urlunsplit(
+        (
+            parts.scheme.lower(),
+            parts.netloc.lower(),
+            clean_path,
+            "",
+            "",
+        )
+    )
+
+
+def _clean_text(text: str) -> str:
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _infer_category(title: str) -> Optional[str]:
+    t = (title or "").lower()
+    rules = [
+        # Men's categories
+        (r"\bkurta\s*set\b|\bkurta\s*pyjama\b", "Kurta Set"),
+        (r"\bsherwani\b", "Sherwani"),
+        (r"\bnehru\s+jacket\b", "Nehru Jacket"),
+        (r"\bdhoti\b", "Dhoti"),
+        (r"\bethnic\s*set\b", "Ethnic Set"),
+        # Women's categories
+        (r"\bkurti\b", "Kurti"),
+        (r"\btunic\b", "Tunic"),
+        (r"\bsaree\b", "Saree"),
+        (r"\blehenga\b|\blehenga\s*choli\b", "Lehenga Choli"),
+        (r"\bsalwar\b|\bkameez\b|\bchuridar\b|\bsuit\b", "Salwar Suit"),
+        # Shared
+        (r"\bkurta\b", "Kurta"),
+        (r"\bpalazzo\b|\bco-?ord\b", "Co-Ord Set"),
+        (r"\bethnic\s*dress\b|\bdress\b", "Ethnic Dress"),
+        (r"\bethnic\s*wear\b|\bethnic\b", "Ethnic Wear"),
+        (r"\banarkali\b", "Anarkali"),
+    ]
+    for pattern, label in rules:
+        if re.search(pattern, t):
+            return label
+    return None
+
+
+def _normalize_gender(raw: Optional[str]) -> Optional[str]:
+    """Normalize a raw gender string; returns Men, Women, or Unisex."""
+    if not raw:
+        return None
+    v = str(raw).lower()
+    
+    is_women = re.search(r"\b(women|woman|ladies|female)\b", v)
+    is_men = re.search(r"\b(men|man|male|mens)\b", v)
+    
+    if is_women and is_men:
+        return "Unisex"
+    if is_women:
+        return "Women"
+    if is_men:
+        return "Men"
+    
+    return None
+
+
+def _infer_target_gender(title: str, category: Optional[str] = None) -> Optional[str]:
+    text = f"{title or ''} {category or ''}".lower()
+
+    if re.search(r"\b(kids?|boys?|girls?|children|child|infant|toddler)\b", text):
+        return None
+
+    is_women = re.search(r"\b(women|woman|ladies|female)\b", text)
+    is_men = re.search(r"\b(men|man|male|mens)\b", text)
+
+    # Specific category checks for fallback
+    has_women_cat = any(re.search(p, text) for p in _WOMEN_ONLY_CATEGORIES)
+    has_men_cat = any(re.search(p, text) for p in _MEN_ONLY_CATEGORIES)
+
+    if (is_women or has_women_cat) and (is_men or has_men_cat):
+        return "Unisex"
+    if is_women or has_women_cat:
+        return "Women"
+    if is_men or has_men_cat:
+        return "Men"
+
+    return None
 
 
 def _dedup_key(p: RawProduct) -> str:
