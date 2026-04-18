@@ -23,6 +23,16 @@ _MEN_ONLY_CATEGORIES = {
     r"\bpathani\b",
 }
 
+# STRICT EXCLUSION: Purge non-clothing items
+_BANNED_KEYWORDS = [
+    r"\bnecklace\b", r"\bearring\s*s?\b", r"\bjewellery\b", r"\bjewelry\b",
+    r"\bshoes?\b", r"\bfootwear\b", r"\bsandals?\b", r"\bslippers?\b",
+    r"\bbangle\s*s?\b", r"\bring\b", r"\bpendant\b", r"\bwatch\b",
+    r"\bbags?\b", r"\bwallet\b", r"\bbelt\b", r"\bsunglasses\b",
+    r"\bjewel\b", r"\bheels?\b", r"\bflats?\b", r"\bjhumka\b",
+    r"\bchoker\b", r"\bbracelet\b", r"\banklet\b", r"\bnose\s*ring\b"
+]
+
 
 def normalize(products: list[RawProduct]) -> list[dict]:
     """Deduplicate, clean, and gender-filter a merged list of RawProduct objects."""
@@ -32,6 +42,15 @@ def normalize(products: list[RawProduct]) -> list[dict]:
     for p in products:
         if not p.is_valid():
             continue
+            
+        # 1. Strict Noise Filter (Title and Category)
+        title_lower = (p.title or "").lower()
+        category_lower = (p.category or "").lower()
+        combined_text = f"{title_lower} {category_lower}"
+        
+        if any(re.search(pattern, combined_text) for pattern in _BANNED_KEYWORDS):
+            continue
+
         key = _dedup_key(p)
         if key in seen:
             continue
@@ -50,13 +69,12 @@ def normalize(products: list[RawProduct]) -> list[dict]:
             d["price_original"] = None
             d["discount_percent"] = None
 
-        # Enhanced Gender Logic: Supports Unisex and Fallback
+        # 2. Enhanced Gender Logic
         gender = _normalize_gender(d.get("target_gender")) or _infer_target_gender(
             d["title"], d.get("category")
         )
 
-        # Fix: If we still don't know the gender but it's a valid ethnic garment, 
-        # label as Unisex so it's not deleted.
+        # 3. Fallback to Unisex if it's a valid ethnic garment
         if not gender:
             if d.get("category") or _infer_category(d["title"]):
                 gender = "Unisex"
