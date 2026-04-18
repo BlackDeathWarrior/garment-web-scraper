@@ -206,14 +206,16 @@ function Section({ title, children }) {
 function CheckItem({ label, checked, onChange }) {
   return (
     <label className={`
-      flex items-center gap-2.5 text-sm cursor-pointer py-1.5 px-2 rounded-lg transition-all font-medium
-      ${checked ? 'bg-maroon-50 text-maroon-800' : 'text-gray-700 hover:bg-gray-50'}
+      flex items-center gap-2.5 text-sm cursor-pointer py-2 px-3 rounded-xl transition-all font-bold border
+      ${checked 
+        ? 'bg-maroon-700 text-white border-maroon-700 shadow-md ring-2 ring-maroon-100' 
+        : 'text-gray-600 bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200'}
     `}>
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="accent-maroon-700 w-4 h-4 flex-shrink-0"
+        className="accent-white w-4 h-4 flex-shrink-0"
       />
       <span className="truncate">{label}</span>
     </label>
