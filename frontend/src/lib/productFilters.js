@@ -1,4 +1,4 @@
-﻿export const DEFAULT_FILTERS = {
+export const DEFAULT_FILTERS = {
   sources: [],
   brands: [],
   colors: [],
@@ -219,7 +219,11 @@ export function filterProducts(products, search, filters) {
       result.sort((a, b) => (normalizeNumber(b.price_current) ?? 0) - (normalizeNumber(a.price_current) ?? 0))
       break
     case 'rating_desc':
-      result.sort((a, b) => (normalizeNumber(b.rating) ?? 0) - (normalizeNumber(a.rating) ?? 0))
+      result.sort((a, b) => {
+        const scoreA = normalizeNumber(a.trust_score) ?? (normalizeNumber(a.rating) ? normalizeNumber(a.rating) * 10 : 0)
+        const scoreB = normalizeNumber(b.trust_score) ?? (normalizeNumber(b.rating) ? normalizeNumber(b.rating) * 10 : 0)
+        return scoreB - scoreA
+      })
       break
     case 'discount_desc':
       result.sort((a, b) => (normalizeNumber(b.discount_percent) ?? 0) - (normalizeNumber(a.discount_percent) ?? 0))
