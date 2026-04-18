@@ -92,9 +92,10 @@ export default function Home() {
 
   const fetchProducts = useCallback(async (initialLoad = false) => {
     try {
+      // CACHE BUSTER: Add timestamp to force latest 9000+ items
       const localUrl = `/products.json?v=${Date.now()}`
       const baseUrl = import.meta.env.VITE_API_BASE || ''
-      const apiUrl = baseUrl ? `${baseUrl}/products` : null
+      const apiUrl = baseUrl ? `${baseUrl}/products?v=${Date.now()}` : null
 
       let response = await fetch(localUrl, { cache: 'no-store' })
       
