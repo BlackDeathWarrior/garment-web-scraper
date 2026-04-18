@@ -17,7 +17,7 @@ const UI_PREFS_KEY = 'ethnic-threads-ui-prefs-v1'
 const LAST_SCRAPE_KEY = 'ethnic-threads-last-manual-scrape'
 const VALID_PER_PAGE_VALUES = new Set([0, 25, 50, 100])
 const BOTTOM_THRESHOLD_PX = 120
-const MANUAL_COOLDOWN_MS = 5 * 60 * 1000
+const MANUAL_COOLDOWN_MS = 0 // Removed cooldown to allow direct control
 
 const PER_PAGE_OPTIONS = [
   { value: 25, label: '25' },
@@ -81,7 +81,9 @@ export default function Home() {
     if (!isAdmin) return undefined
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`/api/scrape-status?v=${Date.now()}`)
+        const baseUrl = import.meta.env.VITE_API_BASE || ''
+        const url = baseUrl ? `${baseUrl}/api/scrape-status?v=${Date.now()}` : `/api/scrape-status?v=${Date.now()}`
+        const res = await fetch(url)
         if (res.ok) setScrapeStatus(await res.json())
       } catch {}
     }
@@ -90,7 +92,7 @@ export default function Home() {
     return () => clearInterval(id)
   }, [isAdmin])
 
-  // Cooldown logic
+  // Cooldown logic (Now effectively disabled by MS = 0)
   useEffect(() => {
     const checkCooldown = () => {
       const lastScrape = Number(localStorage.getItem(LAST_SCRAPE_KEY) || 0)
@@ -170,7 +172,6 @@ export default function Home() {
   }, [search, filters, perPage])
 
   const requestScrapeCycle = async (reason = 'manual') => {
-    if (cooldownRemaining > 0 && reason === 'manual') return
     if (scrapeRequestInFlight.current) return
     
     scrapeRequestInFlight.current = true
@@ -186,7 +187,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           reason,
-          priority: scrapePriority // Pass priority to backend
+          priority: scrapePriority 
         }),
       })
       
@@ -196,6 +197,10 @@ export default function Home() {
         return { ok: true }
       } else {
         const errData = await response.json().catch(() => ({}))
+        if (response.status === 409) {
+           setScrapeHint('Scraper is already running')
+           return { ok: false, reason: 'already-running' }
+        }
         setScrapeHint(`Failed: ${errData.error || response.status}`)
         return { ok: false, reason: 'error', status: response.status }
       }
@@ -328,7 +333,7 @@ export default function Home() {
                   <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
                     <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
                     <p className="text-xs text-amber-800 leading-relaxed">
-                      <strong>IP Safety:</strong> Manual triggers have a 5-minute cooldown. Use priority to focus on specific inventory needs.
+                      <strong>Direct Control:</strong> Trigger manual scrapes as needed. The system will automatically block overlapping runs for safety.
                     </p>
                   </div>
                 </div>
