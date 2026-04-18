@@ -106,6 +106,8 @@ class ScrapeWorker:
             env["PYTHONUNBUFFERED"] = "1"
             env["SCRAPER_LOG_FILE"] = str(PUBLIC_LOG_FILE)
             env["SCRAPER_LOG_APPEND"] = "1"
+            # Fix: Add ROOT to PYTHONPATH so scraper modules can be found
+            env["PYTHONPATH"] = str(ROOT)
 
             command = [
                 _discover_python_executable(),

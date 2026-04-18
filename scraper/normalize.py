@@ -27,34 +27,98 @@ _MEN_ONLY_CATEGORIES = {
 _BANNED_SUBSTRINGS = [
     "shoe", "footwear", "sandal", "slipper", "heel", "flat", "juttis", "mojaris", "loafer", "kolhapuri", "nagras",
     "necklace", "jewel", "earring", "bangle", "ring", "pendant", "bracelet", "anklet", "jhumka", "choker", "haram",
-    "watch", "wallet", "belt", "sunglasses", "handbag", "purse", "clutch", "nosepin", "nath", "maang", "tika"
+    "watch", "wallet", "belt", "sunglasses", "handbag", "purse", "clutch", "nosepin", "nath", "maang", "tika",
+    "kamarband", "mangalsutra", "gold plated", "silver plated", "oxidised", "jewelry set", "jewellery set",
+    "combo set", "combo of", "pack of", "artificial", "beads", "latkan", "tassels"
 ]
+
+
+def calculate_trust_score(rating: Optional[float], count: Optional[int]) -> Optional[int]:
+    """Calculate a heuristic AI Trust Score (0-100) based on rating and volume."""
+    if not rating or not count or count == 0:
+        return None
+        
+    # Base score out of 100
+    base_score = (rating / 5.0) * 100
+    
+    # Volume modifier (confidence increases with more reviews)
+    if count < 10:
+        modifier = 0.80  # Low confidence
+    elif count < 50:
+        modifier = 0.90
+    elif count < 500:
+        modifier = 0.98
+    elif count < 1000:
+        modifier = 1.00
+    else:
+        # Bonus for massive review counts maintaining high averages
+        modifier = min(1.05, 1.0 + (count / 50000))
+        
+    final_score = base_score * modifier
+    return max(1, min(99, int(round(final_score))))
 
 
 def normalize(products: list[RawProduct]) -> list[dict]:
     """Deduplicate, clean, and gender-filter a merged list of RawProduct objects."""
-    seen: set[str] = set()
-    result = []
+    # Use a dictionary to merge multi-source products
+    # Key: (Normalized Brand + Normalized Title snippet)
+    merged: dict[str, dict] = {}
 
     for p in products:
         if not p.is_valid():
             continue
             
         # 1. Nuclear Noise Filter (Case-insensitive substring match)
+        # Explicitly purged 'jhumka' and 'earring'
         search_text = (f"{p.title or ''} {p.category or ''}").lower()
-        if any(banned in search_text for banned in _BANNED_SUBSTRINGS):
+        if any(banned in search_text for banned in _BANNED_SUBSTRINGS + ["jhumka", "earring", "jewel"]):
             continue
 
-        key = _dedup_key(p)
-        if key in seen:
-            continue
-        seen.add(key)
+        # Create a merge key for cross-source detection
+        brand_norm = (p.brand or "generic").lower().strip()
+        title_norm = re.sub(r"[^a-z0-9]", "", (p.title or "").lower())[:40]
+        merge_key = f"{brand_norm}::{title_norm}"
 
         d = p.to_dict()
+        
+        # 2. IMAGE UPSCALING: Fix Blurry Images
+        if d.get("image_url"):
+            url = d["image_url"]
+            if "images-amazon.com" in url or "media-amazon.com" in url:
+                d["image_url"] = re.sub(r"\._[A-Za-z0-9_,]+_\.(jpg|jpeg|png)", r".\1", url, flags=re.I)
+            elif "rukminim" in url:
+                d["image_url"] = url.replace("/200/200/", "/800/800/").replace("/128/128/", "/800/800/")
+            elif "assets.myntassets.com" in url:
+                d["image_url"] = url.replace("/h_240,q_90,w_180/", "/h_1000,q_95,w_800/")
+
         d["title"] = _clean_text(d.get("title") or "")
         d["brand"] = _clean_text(d.get("brand") or "") or None
         d["category"] = _clean_text(d.get("category") or "") or _infer_category(d["title"])
 
+        # 3. Merging Logic
+        if merge_key in merged:
+            existing = merged[merge_key]
+            # Track multiple sources
+            if "other_sources" not in existing:
+                existing["other_sources"] = []
+            
+            new_source_info = {
+                "source": d["source"],
+                "url": d["product_url"],
+                "price": d["price_current"]
+            }
+            
+            # Only add if source is different
+            if d["source"] != existing["source"]:
+                existing["other_sources"].append(new_source_info)
+                # Keep the cheapest one as primary
+                if d["price_current"] and existing["price_current"] and d["price_current"] < existing["price_current"]:
+                    existing["price_current"] = d["price_current"]
+                    existing["product_url"] = d["product_url"]
+                    existing["source"] = d["source"]
+            continue
+
+        # First time seeing this product
         cur = d.get("price_current")
         orig = d.get("price_original")
         if cur and orig and orig > cur:
@@ -63,12 +127,12 @@ def normalize(products: list[RawProduct]) -> list[dict]:
             d["price_original"] = None
             d["discount_percent"] = None
 
-        # 2. Enhanced Gender Logic
+        d["trust_score"] = calculate_trust_score(d.get("rating"), d.get("rating_count"))
+
         gender = _normalize_gender(d.get("target_gender")) or _infer_target_gender(
             d["title"], d.get("category")
         )
 
-        # 3. Fallback to Unisex if it's a valid ethnic garment
         if not gender:
             if d.get("category") or _infer_category(d["title"]):
                 gender = "Unisex"
@@ -76,9 +140,9 @@ def normalize(products: list[RawProduct]) -> list[dict]:
                 continue
 
         d["target_gender"] = gender
-        result.append(d)
+        merged[merge_key] = d
 
-    return result
+    return list(merged.values())
 
 
 def _dedup_key(p: RawProduct) -> str:
