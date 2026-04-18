@@ -1,4 +1,5 @@
-import { FiX } from 'react-icons/fi'
+import { useState } from 'react'
+import { FiX, FiSearch, FiFilter } from 'react-icons/fi'
 
 const SORT_OPTIONS = [
   { value: 'default',       label: 'Relevance' },
@@ -17,9 +18,15 @@ export default function FilterSidebar({
   isOpen,
   onClose,
 }) {
+  const [brandSearch, setBrandSearch] = useState('')
+
   const brands  = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort()
   const colors  = [...new Set(products.map((p) => p.color).filter(Boolean))].sort()
   const sources = [...new Set(products.map((p) => p.source).filter(Boolean))].sort()
+
+  const filteredBrands = brands.filter(b => 
+    b.toLowerCase().includes(brandSearch.toLowerCase())
+  )
 
   const toggle = (key, value) => {
     const set = new Set(filters[key] ?? [])
@@ -59,15 +66,18 @@ export default function FilterSidebar({
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-serif font-semibold text-xl text-gray-900">Filters</h2>
+        <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <FiFilter className="text-maroon-700" size={18} />
+            <h2 className="font-bold text-lg text-gray-900">Filters</h2>
+          </div>
           <div className="flex items-center gap-2">
             {activeCount > 0 && (
               <button
                 onClick={clear}
-                className="text-sm text-maroon-700 hover:underline font-semibold"
+                className="text-xs bg-maroon-50 text-maroon-700 px-2 py-1 rounded-md hover:bg-maroon-100 transition-colors font-bold"
               >
-                Clear ({activeCount})
+                Clear All
               </button>
             )}
             <button
@@ -82,77 +92,99 @@ export default function FilterSidebar({
 
         {/* Sort */}
         <Section title="Sort By">
-          {SORT_OPTIONS.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer py-1 hover:text-maroon-700 font-medium"
-            >
-              <input
-                type="radio"
-                name="sort"
-                value={opt.value}
-                checked={filters.sort === opt.value}
-                onChange={(e) =>
-                  onFiltersChange({ ...filters, sort: e.target.value })
-                }
-                className="accent-maroon-700"
-              />
-              {opt.label}
-            </label>
-          ))}
+          <div className="grid gap-1">
+            {SORT_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                <input
+                  type="radio"
+                  name="sort"
+                  value={opt.value}
+                  checked={filters.sort === opt.value}
+                  onChange={(e) =>
+                    onFiltersChange({ ...filters, sort: e.target.value })
+                  }
+                  className="accent-maroon-700 w-4 h-4"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
         </Section>
 
         {/* Gender */}
         <Section title="Gender">
-          {GENDER_OPTIONS.map((g) => (
-            <CheckItem
-              key={g}
-              label={g}
-              checked={filters.genders?.includes(g) ?? false}
-              onChange={() => toggle('genders', g)}
-            />
-          ))}
+          <div className="grid gap-1">
+            {GENDER_OPTIONS.map((g) => (
+              <CheckItem
+                key={g}
+                label={g}
+                checked={filters.genders?.includes(g) ?? false}
+                onChange={() => toggle('genders', g)}
+              />
+            ))}
+          </div>
         </Section>
 
         {/* Source */}
         {sources.length > 0 && (
           <Section title="Source">
-            {sources.map((s) => (
-              <CheckItem
-                key={s}
-                label={s.charAt(0).toUpperCase() + s.slice(1)}
-                checked={filters.sources?.includes(s) ?? false}
-                onChange={() => toggle('sources', s)}
-              />
-            ))}
+            <div className="grid gap-1">
+              {sources.map((s) => (
+                <CheckItem
+                  key={s}
+                  label={s.charAt(0).toUpperCase() + s.slice(1)}
+                  checked={filters.sources?.includes(s) ?? false}
+                  onChange={() => toggle('sources', s)}
+                />
+              ))}
+            </div>
           </Section>
         )}
 
-        {/* Brand */}
-        {brands.length > 0 && (
-          <Section title="Brand">
-            {brands.slice(0, 20).map((b) => (
-              <CheckItem
-                key={b}
-                label={b}
-                checked={filters.brands?.includes(b) ?? false}
-                onChange={() => toggle('brands', b)}
-              />
-            ))}
-          </Section>
-        )}
+        {/* Brand - SEARCHABLE */}
+        <Section title="Brand">
+          <div className="relative mb-3">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <input
+              type="text"
+              placeholder="Search brands..."
+              value={brandSearch}
+              onChange={(e) => setBrandSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
+            />
+          </div>
+          <div className="grid gap-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+            {filteredBrands.length > 0 ? (
+              filteredBrands.map((b) => (
+                <CheckItem
+                  key={b}
+                  label={b}
+                  checked={filters.brands?.includes(b) ?? false}
+                  onChange={() => toggle('brands', b)}
+                />
+              ))
+            ) : (
+              <p className="text-[11px] text-gray-400 italic py-2 text-center">No brands found</p>
+            )}
+          </div>
+        </Section>
 
         {/* Color */}
         {colors.length > 0 && (
           <Section title="Color">
-            {colors.slice(0, 15).map((c) => (
-              <CheckItem
-                key={c}
-                label={c}
-                checked={filters.colors?.includes(c) ?? false}
-                onChange={() => toggle('colors', c)}
-              />
-            ))}
+            <div className="grid gap-1 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+              {colors.map((c) => (
+                <CheckItem
+                  key={c}
+                  label={c}
+                  checked={filters.colors?.includes(c) ?? false}
+                  onChange={() => toggle('colors', c)}
+                />
+              ))}
+            </div>
           </Section>
         )}
       </aside>
@@ -162,24 +194,26 @@ export default function FilterSidebar({
 
 function Section({ title, children }) {
   return (
-    <div className="mb-5">
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+    <div className="mb-6">
+      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[2px] mb-3">
         {title}
       </h3>
       {children}
-      <div className="border-t border-gray-100 mt-3" />
     </div>
   )
 }
 
 function CheckItem({ label, checked, onChange }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer py-1 hover:text-maroon-700 font-medium">
+    <label className={`
+      flex items-center gap-2.5 text-sm cursor-pointer py-1.5 px-2 rounded-lg transition-all font-medium
+      ${checked ? 'bg-maroon-50 text-maroon-800' : 'text-gray-700 hover:bg-gray-50'}
+    `}>
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="accent-maroon-700 w-3.5 h-3.5 flex-shrink-0"
+        className="accent-maroon-700 w-4 h-4 flex-shrink-0"
       />
       <span className="truncate">{label}</span>
     </label>

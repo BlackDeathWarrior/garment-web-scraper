@@ -148,7 +148,7 @@ export default function Home() {
 
     try {
       const baseUrl = import.meta.env.VITE_API_BASE || ''
-      const url = baseUrl ? `${baseUrl}/scrape-cycle` : '/api/scrape-cycle'
+      const url = baseUrl ? `${baseUrl}/api/scrape-cycle` : '/api/scrape-cycle'
 
       const response = await fetch(url, {
         method: 'POST',

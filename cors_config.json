@@ -1,5 +1,0 @@
-{
-  "AllowOrigins": ["*"],
-  "AllowMethods": ["*"],
-  "AllowHeaders": ["*"]
-}
