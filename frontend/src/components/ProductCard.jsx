@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FiExternalLink, FiInfo } from 'react-icons/fi'
+import { FiExternalLink, FiInfo, FiShield } from 'react-icons/fi'
 
 const FALLBACK_SRC =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='560' viewBox='0 0 420 560'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f8efe4'/%3E%3Cstop offset='100%25' stop-color='%23efe3d3'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='420' height='560' fill='url(%23g)'/%3E%3Crect x='24' y='24' width='372' height='512' rx='20' fill='none' stroke='%23cfb18d' stroke-width='3' stroke-dasharray='10 8'/%3E%3Ctext x='50%25' y='44%25' dominant-baseline='middle' text-anchor='middle' font-size='54' fill='%23a07a4b'%3ENo%20Image%3C/text%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='22' fill='%23917857'%3EImage%20Unavailable%3C/text%3E%3C/svg%3E"
@@ -238,6 +238,15 @@ export default function ProductCard({ product, onClick }) {
         )}
 
         <StarFlair rating={normalizedRating} count={normalizedRatingCount} />
+
+        {product.trust_score && (
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <FiShield size={12} className="text-emerald-600" />
+            <span className="text-[11px] font-bold text-emerald-700 tracking-wide">
+              {product.trust_score}% AI Trust Score
+            </span>
+          </div>
+        )}
 
         {isLowStock && (
           <p className="text-xs font-semibold text-amber-700">

@@ -1,4 +1,4 @@
-import { FiX, FiShoppingBag, FiInfo, FiTag, FiTruck, FiStar } from 'react-icons/fi'
+import { FiX, FiShoppingBag, FiInfo, FiTag, FiTruck, FiStar, FiShield } from 'react-icons/fi'
 
 const RUPEE = '\u20B9'
 
@@ -54,12 +54,19 @@ export default function ProductModal({ product, onClose }) {
                 <FiInfo size={14} className="text-maroon-700" /> Product Specifications
               </h3>
               <div className="grid grid-cols-2 gap-4">
-                <SpecItem label="Fabric" value={product.fabric || 'Premium Blend'} />
+                {product.fabric && <SpecItem label="Fabric" value={product.fabric} />}
                 <SpecItem label="Category" value={product.category || 'Ethnic Wear'} />
-                <SpecItem label="Color" value={product.color || 'As Shown'} />
+                {product.color && <SpecItem label="Color" value={product.color} />}
                 <SpecItem label="Gender" value={product.target_gender || 'Unisex'} />
                 <SpecItem label="In Stock" value={product.in_stock ? 'Available' : 'Sold Out'} />
                 <SpecItem label="Source" value={product.source} />
+                {product.trust_score && (
+                  <SpecItem 
+                    label="AI Trust Score" 
+                    value={`${product.trust_score}%`} 
+                    icon={<FiShield size={12} className="text-emerald-600 inline mr-1" />} 
+                  />
+                )}
               </div>
             </section>
 
@@ -98,11 +105,13 @@ export default function ProductModal({ product, onClose }) {
   )
 }
 
-function SpecItem({ label, value }) {
+function SpecItem({ label, value, icon }) {
   return (
     <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
       <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">{label}</p>
-      <p className="text-sm text-gray-800 font-semibold truncate capitalize">{value}</p>
+      <p className="text-sm text-gray-800 font-semibold truncate capitalize flex items-center">
+        {icon} {value}
+      </p>
     </div>
   )
 }
