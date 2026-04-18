@@ -81,10 +81,10 @@ Follow these steps to take your project from your local computer to the live web
 ---
 
 ## 🔑 Step 4: Admin Access
-Use these credentials to log in once your site is live:
+Use the credentials you configured in your environment variables to log in once your site is live.
 - **URL**: Your S3 Website Endpoint (found in S3 -> Properties -> Static website hosting).
 - **Username**: `scraper_admin`
-- **Password**: `&Jd%)(%AxbiXw#t0SzLv`
+- **Password**: [Your Secure Password]
 
 ---
 

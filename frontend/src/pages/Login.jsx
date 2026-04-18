@@ -15,10 +15,9 @@ export default function Login() {
     setLoading(true)
 
     try {
-      // In a real AWS implementation, this would call your API Gateway /login endpoint
-      // For now, we simulate the success if credentials match the admin requirement
-      if (username === 'scraper_admin' && password === '&Jd%)(%AxbiXw#t0SzLv') {
-        localStorage.setItem('scraper_auth_token', 'mock_token_for_demo')
+      const adminPass = import.meta.env.VITE_ADMIN_PASSWORD || 'fallback_dev_only'
+      if (username === 'scraper_admin' && password === adminPass) {
+        localStorage.setItem('scraper_auth_token', 'session_active')
         navigate('/')
       } else {
         setError('Invalid username or password')

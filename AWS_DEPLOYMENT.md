@@ -51,4 +51,4 @@ playwright install chromium --with-deps
 
 ## 4. Admin Access
 - **Username**: `scraper_admin`
-- **Password**: `&Jd%)(%AxbiXw#t0SzLv`
+- **Password**: [Stored in .env]
