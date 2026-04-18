@@ -96,17 +96,20 @@ export default function FilterSidebar({
             {SORT_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
-                className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                htmlFor={`sort-${opt.value}`}
+                className={`flex items-center gap-2.5 text-sm cursor-pointer py-2 px-3 rounded-xl transition-all font-bold border
+                  ${filters.sort === opt.value 
+                    ? 'bg-maroon-700 text-white border-maroon-700 shadow-md ring-2 ring-maroon-100' 
+                    : 'text-gray-600 bg-white border-gray-100 hover:bg-gray-50'}`}
               >
                 <input
                   type="radio"
+                  id={`sort-${opt.value}`}
                   name="sort"
                   value={opt.value}
                   checked={filters.sort === opt.value}
-                  onChange={(e) =>
-                    onFiltersChange({ ...filters, sort: e.target.value })
-                  }
-                  className="accent-maroon-700 w-4 h-4"
+                  onChange={() => onFiltersChange({ ...filters, sort: opt.value })}
+                  className="accent-white w-4 h-4"
                 />
                 {opt.label}
               </label>
@@ -120,6 +123,7 @@ export default function FilterSidebar({
             {GENDER_OPTIONS.map((g) => (
               <CheckItem
                 key={g}
+                id={`gender-${g}`}
                 label={g}
                 checked={filters.genders?.includes(g) ?? false}
                 onChange={() => toggle('genders', g)}
@@ -135,6 +139,7 @@ export default function FilterSidebar({
               {sources.map((s) => (
                 <CheckItem
                   key={s}
+                  id={`source-${s}`}
                   label={s.charAt(0).toUpperCase() + s.slice(1)}
                   checked={filters.sources?.includes(s) ?? false}
                   onChange={() => toggle('sources', s)}
@@ -161,6 +166,7 @@ export default function FilterSidebar({
               filteredBrands.map((b) => (
                 <CheckItem
                   key={b}
+                  id={`brand-${b}`}
                   label={b}
                   checked={filters.brands?.includes(b) ?? false}
                   onChange={() => toggle('brands', b)}
@@ -179,6 +185,7 @@ export default function FilterSidebar({
               {colors.map((c) => (
                 <CheckItem
                   key={c}
+                  id={`color-${c}`}
                   label={c}
                   checked={filters.colors?.includes(c) ?? false}
                   onChange={() => toggle('colors', c)}
@@ -203,9 +210,11 @@ function Section({ title, children }) {
   )
 }
 
-function CheckItem({ label, checked, onChange }) {
+function CheckItem({ id, label, checked, onChange }) {
   return (
-    <label className={`
+    <label 
+      htmlFor={id}
+      className={`
       flex items-center gap-2.5 text-sm cursor-pointer py-2 px-3 rounded-xl transition-all font-bold border
       ${checked 
         ? 'bg-maroon-700 text-white border-maroon-700 shadow-md ring-2 ring-maroon-100' 
@@ -213,6 +222,7 @@ function CheckItem({ label, checked, onChange }) {
     `}>
       <input
         type="checkbox"
+        id={id}
         checked={checked}
         onChange={onChange}
         className="accent-white w-4 h-4 flex-shrink-0"
