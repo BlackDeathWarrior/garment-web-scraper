@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { FiLock, FiUser } from 'react-icons/fi'
 
 export default function Login() {
@@ -16,8 +16,19 @@ export default function Login() {
 
     try {
       const adminPass = import.meta.env.VITE_ADMIN_PASSWORD || 'fallback_dev_only'
+      
+      // 1. Check Admin
       if (username === 'scraper_admin' && password === adminPass) {
-        localStorage.setItem('scraper_auth_token', 'session_active')
+        localStorage.setItem('scraper_auth_token', 'admin_session_active')
+        return navigate('/')
+      }
+
+      // 2. Check Registered Users
+      const users = JSON.parse(localStorage.getItem('scraper_users') || '[]')
+      const user = users.find(u => u.username === username && u.password === password)
+      
+      if (user) {
+        localStorage.setItem('scraper_auth_token', 'user_session_active')
         navigate('/')
       } else {
         setError('Invalid username or password')
@@ -34,7 +45,7 @@ export default function Login() {
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
         <div className="bg-maroon-700 p-8 text-center">
           <h1 className="text-3xl font-bold text-white tracking-tight">Ethnic Threads</h1>
-          <p className="text-maroon-100 mt-2">Admin Dashboard Login</p>
+          <p className="text-maroon-100 mt-2">Login to Continue</p>
         </div>
         
         <form onSubmit={handleLogin} className="p-8 space-y-6">
@@ -55,7 +66,7 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-maroon-500 focus:border-transparent outline-none transition-all"
-              placeholder="Enter admin username"
+              placeholder="Enter username"
             />
           </div>
           
@@ -83,9 +94,12 @@ export default function Login() {
           </button>
         </form>
         
-        <div className="bg-gray-50 px-8 py-4 text-center">
-          <p className="text-xs text-gray-500">
-            Secure Admin Access Only
+        <div className="bg-gray-50 px-8 py-4 text-center border-t border-gray-100">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-maroon-700 font-bold hover:underline">
+              Register Now
+            </Link>
           </p>
         </div>
       </div>
