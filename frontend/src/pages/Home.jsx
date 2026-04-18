@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock, FiSettings } from 'react-icons/fi'
+import { FiArrowDown, FiLogOut, FiAlertTriangle, FiClock, FiSettings, FiLayout } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import FilterSidebar from '../components/FilterSidebar'
@@ -17,6 +17,13 @@ const LAST_SCRAPE_KEY = 'ethnic-threads-last-manual-scrape'
 const VALID_PER_PAGE_VALUES = new Set([0, 25, 50, 100])
 const BOTTOM_THRESHOLD_PX = 120
 const MANUAL_COOLDOWN_MS = 5 * 60 * 1000
+
+const PER_PAGE_OPTIONS = [
+  { value: 25, label: '25' },
+  { value: 50, label: '50' },
+  { value: 100, label: '100' },
+  { value: 0, label: 'All' },
+]
 
 function loadStoredPrefs() {
   if (typeof window === 'undefined') return {}
@@ -221,28 +228,52 @@ export default function Home() {
       <div className="max-w-screen-xl mx-auto px-4 py-6 flex gap-6 items-start">
         <div className="w-64 shrink-0 hidden lg:block">
           {!loading && !error && (
-            <div className="mb-6 px-1">
-              <p className="text-sm text-gray-600 font-medium">
-                Showing{' '}
-                <span className="font-semibold text-gray-900">
-                  {filtered.length.toLocaleString('en-IN')}
-                </span>{' '}
-                of {products.length.toLocaleString('en-IN')} products
-              </p>
-              {lastUpdatedAt && (
-                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-bold">
-                  Last Sync {lastUpdatedAt.toLocaleTimeString('en-IN')}
+            <>
+              <div className="mb-6 px-1">
+                <p className="text-sm text-gray-600 font-medium">
+                  Showing{' '}
+                  <span className="font-semibold text-gray-900">
+                    {filtered.length.toLocaleString('en-IN')}
+                  </span>{' '}
+                  of {products.length.toLocaleString('en-IN')} products
                 </p>
-              )}
-            </div>
+                {lastUpdatedAt && (
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-bold">
+                    Last Sync {lastUpdatedAt.toLocaleTimeString('en-IN')}
+                  </p>
+                )}
+              </div>
+
+              <FilterSidebar
+                filters={filters}
+                onFiltersChange={setFilters}
+                products={products}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+              />
+
+              <div className="mt-8 px-1">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-3">
+                  <FiLayout size={12} className="text-maroon-700" /> Items per page
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PER_PAGE_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setPerPage(value)}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                        perPage === value
+                          ? 'bg-maroon-700 text-white border-maroon-700 shadow-md'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-maroon-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
-          <FilterSidebar
-            filters={filters}
-            onFiltersChange={setFilters}
-            products={products}
-            isOpen={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
         </div>
 
         {/* Mobile sidebar (toggled) */}
@@ -263,7 +294,6 @@ export default function Home() {
             total={filtered.length}
             perPage={perPage}
             page={page}
-            onPerPageChange={setPerPage}
             onPageChange={setPage}
           />
 
