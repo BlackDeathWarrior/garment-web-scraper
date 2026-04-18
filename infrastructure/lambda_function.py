@@ -55,6 +55,21 @@ def lambda_handler(event, context):
     # 2. POST /scrape-cycle - Trigger EC2 Scraper
     if path == '/scrape-cycle' and method == 'POST':
         try:
+            # Parse priority from body
+            body = {}
+            if event.get('body'):
+                try:
+                    body = json.loads(event['body'])
+                except:
+                    pass
+            
+            priority = body.get('priority', 'both') # default to both
+            gender_flag = ""
+            if priority == 'men':
+                gender_flag = " --gender Men"
+            elif priority == 'women':
+                gender_flag = " --gender Women"
+
             ssm = boto3.client('ssm')
             instance_id = os.environ.get('EC2_INSTANCE_ID')
             
@@ -68,13 +83,13 @@ def lambda_handler(event, context):
             ssm.send_command(
                 InstanceIds=[instance_id],
                 DocumentName="AWS-RunShellScript",
-                Parameters={'commands': ['cd /home/ubuntu/scraper/scraper && python3 collect.py --max-products 100']}
+                Parameters={'commands': [f'cd /home/ubuntu/scraper/scraper && python3 collect.py --max-products 100{gender_flag}']}
             )
 
             return {
                 "statusCode": 200,
                 "headers": headers,
-                "body": json.dumps({"message": "Scrape command sent to EC2", "ok": True})
+                "body": json.dumps({"message": f"Scrape command ({priority}) sent to EC2", "ok": True})
             }
         except Exception as e:
             return {

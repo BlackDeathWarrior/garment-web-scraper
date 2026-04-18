@@ -86,7 +86,7 @@ class ScrapeWorker:
         with self._lock:
             return self._status_payload_unlocked()
 
-    def trigger(self, reason: str = "manual") -> tuple[int, dict[str, Any]]:
+    def trigger(self, reason: str = "manual", gender_flag: str = "") -> tuple[int, dict[str, Any]]:
         with self._lock:
             if self._process is not None and self._process.poll() is None:
                 payload = self._status_payload_unlocked()
@@ -118,6 +118,10 @@ class ScrapeWorker:
                 "--append-existing",
                 "--stream-checkpoints",
             ]
+            
+            if gender_flag:
+                # Splitting " --gender Men" into ["--gender", "Men"]
+                command.extend(gender_flag.strip().split())
 
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -244,7 +248,17 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/scrape-cycle"):
             payload = self._read_json_body()
             reason = str(payload.get("reason") or "manual")
-            code, response = self.worker.trigger(reason=reason)
+            priority = str(payload.get("priority") or "both")
+            
+            gender_flag = ""
+            if priority == 'men':
+                gender_flag = " --gender Men"
+            elif priority == 'women':
+                gender_flag = " --gender Women"
+
+            # Modify command to include gender if needed
+            original_trigger = self.worker.trigger
+            code, response = self.worker.trigger(reason=reason, gender_flag=gender_flag)
             self._send_json(code, response)
             return
 

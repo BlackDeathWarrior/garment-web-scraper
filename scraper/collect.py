@@ -487,6 +487,12 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated sources: flipkart,myntra,amazon",
     )
     parser.add_argument(
+        "--gender",
+        type=str,
+        choices=["Men", "Women"],
+        help="Prioritize a specific gender during this scrape cycle",
+    )
+    parser.add_argument(
         "--append-existing",
         action="store_true",
         help="Merge new products with existing outputs/products.json",
