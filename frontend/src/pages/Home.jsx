@@ -219,30 +219,44 @@ export default function Home() {
       />
 
       <div className="max-w-screen-xl mx-auto px-4 py-6 flex gap-6 items-start">
-        <FilterSidebar
-          filters={filters}
-          onFiltersChange={setFilters}
-          products={products}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+        <div className="w-64 shrink-0 hidden lg:block">
+          {!loading && !error && (
+            <div className="mb-6 px-1">
+              <p className="text-sm text-gray-600 font-medium">
+                Showing{' '}
+                <span className="font-semibold text-gray-900">
+                  {filtered.length.toLocaleString('en-IN')}
+                </span>{' '}
+                of {products.length.toLocaleString('en-IN')} products
+              </p>
+              {lastUpdatedAt && (
+                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider font-bold">
+                  Last Sync {lastUpdatedAt.toLocaleTimeString('en-IN')}
+                </p>
+              )}
+            </div>
+          )}
+          <FilterSidebar
+            filters={filters}
+            onFiltersChange={setFilters}
+            products={products}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </div>
+
+        {/* Mobile sidebar (toggled) */}
+        <div className="lg:hidden">
+           <FilterSidebar
+            filters={filters}
+            onFiltersChange={setFilters}
+            products={products}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </div>
 
         <main className="flex-1 min-w-0">
-          {!loading && !error && (
-            <p className="text-sm text-gray-600 mb-4 font-medium">
-              Showing{' '}
-              <span className="font-semibold text-gray-900">
-                {filtered.length.toLocaleString('en-IN')}
-              </span>{' '}
-              of {products.length.toLocaleString('en-IN')} products
-              {lastUpdatedAt && (
-                <span className="ml-2 text-xs text-gray-500">
-                  | Last Sync {lastUpdatedAt.toLocaleTimeString('en-IN')}
-                </span>
-              )}
-            </p>
-          )}
-          
           <ProductGrid products={paged} loading={loading} error={error} />
           
           <Pagination
