@@ -20,8 +20,8 @@ export default function Contact() {
     }
     
     try {
-      // Direct email endpoint triggers automated form creation/activation
-      const response = await fetch("https://formspree.io/f/prithvijay2006@gmail.com", {
+      // Corrected URL: No '/f/' for direct email addresses
+      const response = await fetch("https://formspree.io/prithvijay2006@gmail.com", {
         method: "POST",
         body: JSON.stringify(data),
         headers: {
