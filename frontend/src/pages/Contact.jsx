@@ -19,7 +19,7 @@ export default function Contact() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#faf8f5]">
-        <Navbar />
+        <Navbar search="" onSearch={() => {}} productCount={0} />
         <div className="max-w-2xl mx-auto px-4 py-20 text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full mb-6">
             <FiCheckCircle size={40} />
@@ -41,7 +41,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5]">
-      <Navbar />
+      <Navbar search="" onSearch={() => {}} productCount={0} />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="grid md:grid-cols-2 gap-12 items-start">
           {/* Info Side */}
