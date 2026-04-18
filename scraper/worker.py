@@ -86,7 +86,7 @@ class ScrapeWorker:
         with self._lock:
             return self._status_payload_unlocked()
 
-    def trigger(self, reason: str = "manual", gender_flag: str = "") -> tuple[int, dict[str, Any]]:
+    def trigger(self, reason: str = "manual", gender_flag: str = "", watch: bool = False) -> tuple[int, dict[str, Any]]:
         with self._lock:
             if self._process is not None and self._process.poll() is None:
                 payload = self._status_payload_unlocked()
@@ -120,6 +120,9 @@ class ScrapeWorker:
                 "--append-existing",
                 "--stream-checkpoints",
             ]
+            
+            if watch:
+                command.extend(["--watch", "--interval-minutes", "5"])
             
             if gender_flag:
                 # Splitting " --gender Men" into ["--gender", "Men"]
@@ -178,6 +181,26 @@ class ScrapeWorker:
             payload = self._status_payload_unlocked()
             payload["ok"] = True
             return HTTPStatus.ACCEPTED, payload
+
+    def stop(self) -> tuple[int, dict[str, Any]]:
+        """Terminates the current scraper process."""
+        with self._lock:
+            if self._process is not None and self._process.poll() is None:
+                self._process.terminate()
+                try:
+                    self._process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self._process.kill()
+                
+                _append_line(
+                    PUBLIC_LOG_FILE,
+                    f"[{datetime.now().strftime('%H:%M:%S')}] [worker    ] WARN Scraper stopped manually by user",
+                )
+                payload = self._status_payload_unlocked()
+                payload["ok"] = True
+                return HTTPStatus.OK, payload
+            
+            return HTTPStatus.BAD_REQUEST, {"ok": False, "reason": "not-running"}
 
     def _watch_process(self, process: subprocess.Popen[str]) -> None:
         exit_code = process.wait()
@@ -258,9 +281,12 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
             elif priority == 'women':
                 gender_flag = " --gender Women"
 
-            # Modify command to include gender if needed
-            original_trigger = self.worker.trigger
             code, response = self.worker.trigger(reason=reason, gender_flag=gender_flag)
+            self._send_json(code, response)
+            return
+
+        if self.path.startswith("/api/stop-scrape"):
+            code, response = self.worker.stop()
             self._send_json(code, response)
             return
 
@@ -320,6 +346,10 @@ def main() -> None:
     args = parse_args()
     worker = ScrapeWorker(sources=args.sources, max_products=args.max_products)
     WorkerRequestHandler.worker = worker
+
+    # ON BY DEFAULT: Auto-start the initial scraper cycle in watch mode
+    print("Auto-starting initial scraper cycle in watch mode...", flush=True)
+    worker.trigger(reason="system-boot", watch=True)
 
     server = ThreadingHTTPServer((args.host, args.port), WorkerRequestHandler)
     print(
