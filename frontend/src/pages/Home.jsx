@@ -6,6 +6,7 @@ import FilterSidebar from '../components/FilterSidebar'
 import ProductGrid from '../components/ProductGrid'
 import Pagination from '../components/Pagination'
 import ScraperLog from '../components/ScraperLog'
+import ProductModal from '../components/ProductModal'
 import {
   DEFAULT_FILTERS,
   filterProducts,
@@ -66,6 +67,7 @@ export default function Home() {
   
   // Priority Controls
   const [scrapePriority, setScrapePriority] = useState('both') // men, women, both
+  const [selectedProduct, setSelectedProduct] = useState(null)
 
   const navigate = useNavigate()
   const hasLoadedSuccessfully = useRef(false)
@@ -288,7 +290,12 @@ export default function Home() {
         </div>
 
         <main className="flex-1 min-w-0">
-          <ProductGrid products={paged} loading={loading} error={error} />
+          <ProductGrid 
+            products={paged} 
+            loading={loading} 
+            error={error} 
+            onProductClick={setSelectedProduct} 
+          />
           
           <Pagination
             total={filtered.length}
@@ -326,7 +333,7 @@ export default function Home() {
                     <button
                       onClick={() => requestScrapeCycle('manual')}
                       disabled={scrapeBusy || scrapeStatus.running || cooldownRemaining > 0}
-                      className="w-full sm:w-auto bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 justify-center"
+                      className="w-full sm:w-auto bg-maroon-700 hover:bg-maroon-800 text-white px-8 py-3 rounded-xl font-bold text-sm disabled:bg-200 disabled:text-gray-400 transition-all shadow-lg shadow-maroon-900/10 flex items-center gap-2 justify-center"
                     >
                       {cooldownRemaining > 0 ? (
                         <>
@@ -350,6 +357,11 @@ export default function Home() {
       </div>
 
       {isAdmin && <ScraperLog onRunScrape={() => requestScrapeCycle('manual')} />}
+
+      <ProductModal 
+        product={selectedProduct} 
+        onClose={() => setSelectedProduct(null)} 
+      />
     </div>
   )
 }

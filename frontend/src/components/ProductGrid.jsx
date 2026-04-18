@@ -1,4 +1,4 @@
-﻿import ProductCard from './ProductCard'
+import ProductCard from './ProductCard'
 
 function stableProductCardKey(product) {
   const source = String(product?.source ?? '').trim().toLowerCase()
@@ -7,7 +7,7 @@ function stableProductCardKey(product) {
   return product?.id ?? product?.title ?? 'product-card'
 }
 
-export default function ProductGrid({ products, loading, error }) {
+export default function ProductGrid({ products, loading, error, onProductClick }) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -64,7 +64,11 @@ export default function ProductGrid({ products, loading, error }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
       {products.map((product) => (
-        <ProductCard key={stableProductCardKey(product)} product={product} />
+        <ProductCard 
+          key={stableProductCardKey(product)} 
+          product={product} 
+          onClick={onProductClick} 
+        />
       ))}
     </div>
   )

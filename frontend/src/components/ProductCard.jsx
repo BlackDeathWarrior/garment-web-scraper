@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FiExternalLink } from 'react-icons/fi'
+import { FiExternalLink, FiInfo } from 'react-icons/fi'
 
 const FALLBACK_SRC =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='560' viewBox='0 0 420 560'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f8efe4'/%3E%3Cstop offset='100%25' stop-color='%23efe3d3'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='420' height='560' fill='url(%23g)'/%3E%3Crect x='24' y='24' width='372' height='512' rx='20' fill='none' stroke='%23cfb18d' stroke-width='3' stroke-dasharray='10 8'/%3E%3Ctext x='50%25' y='44%25' dominant-baseline='middle' text-anchor='middle' font-size='54' fill='%23a07a4b'%3ENo%20Image%3C/text%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='22' fill='%23917857'%3EImage%20Unavailable%3C/text%3E%3C/svg%3E"
@@ -105,7 +105,7 @@ function SpecRow({ label, value }) {
   )
 }
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, onClick }) {
   const [imgError, setImgError] = useState(false)
 
   const {
@@ -160,11 +160,11 @@ export default function ProductCard({ product }) {
   
   // Unisex Support: Render multiple badges
   const genders = target_gender === 'Unisex' ? ['Men', 'Women'] : [target_gender].filter(Boolean)
-  const hasOverlay = !isSoldOut && Boolean(category || color || fabric || source || genders.length)
 
   return (
     <article
-      className={`group bg-white rounded-xl overflow-hidden card-shadow
+      onClick={() => onClick(product)}
+      className={`group bg-white rounded-xl overflow-hidden card-shadow cursor-pointer
                   transition-all duration-300 animate-fade-in flex flex-col h-full border border-gray-200/80
                   ${isSoldOut
                     ? 'opacity-70'
@@ -196,33 +196,12 @@ export default function ProductCard({ product }) {
           ))}
         </div>
 
-        {hasOverlay && (
-          <div
-            className="absolute inset-0 flex flex-col justify-end
-                       translate-y-0 md:translate-y-full md:group-hover:translate-y-0
-                       transition-transform duration-300 ease-out pointer-events-none"
-          >
-            <div className="bg-gradient-to-t from-black/98 via-black/95 to-black/80 backdrop-blur-[2px]
-                            px-3.5 pb-3.5 pt-16">
-              {category && (
-                <span className="inline-block mb-2 text-[10px] uppercase tracking-wider
-                                 border border-gold-400/60 text-gold-300 px-2.5 py-1 rounded-full font-semibold">
-                  {category}
-                </span>
-              )}
-              <div className="space-y-1 mb-2.5">
-                {genders.length > 0 && <SpecRow label="For" value={genders.join(' & ')} />}
-                {color && <SpecRow label="Color" value={color} />}
-                {fabric && <SpecRow label="Fabric" value={fabric} />}
-                {source && <SpecRow label="Via" value={src.label} />}
-              </div>
-              {review_summary && (
-                <p className="text-[12px] text-white/90 italic line-clamp-3
-                              border-t border-white/35 pt-2">
-                  "{review_summary}"
-                </p>
-              )}
-            </div>
+        {/* Clean, readable hover hint instead of dark overlay */}
+        {!isSoldOut && (
+          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-white/90 backdrop-blur-sm border-t border-gray-100 flex items-center justify-center">
+            <span className="text-[10px] font-bold text-maroon-700 uppercase tracking-widest flex items-center gap-1.5">
+              <FiInfo size={12} /> Click for Full Specs
+            </span>
           </div>
         )}
 
@@ -239,12 +218,6 @@ export default function ProductCard({ product }) {
                           text-[11px] font-semibold px-2.5 py-1 rounded-full shadow`}>
           {src.label}
         </span>
-
-        {(!hasPrimaryImage || imgError) && (
-          <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-1 rounded-md">
-            No image
-          </span>
-        )}
       </div>
 
       <div className="p-4 flex flex-col flex-1 gap-2">
@@ -282,40 +255,6 @@ export default function ProductCard({ product }) {
             </span>
           )}
         </div>
-
-        {delivery_info && !isSoldOut && (
-          <p className="text-xs text-emerald-700 truncate font-medium">{delivery_info}</p>
-        )}
-
-        {review_summary && (
-          <blockquote className="bg-amber-50 border-l-[3px] border-gold-500 rounded-r-md px-3 py-2">
-            <p className="text-[13px] text-gray-900 font-medium leading-snug line-clamp-3">
-              "{review_summary}"
-            </p>
-          </blockquote>
-        )}
-
-        {isSoldOut ? (
-          <button
-            disabled
-            className="mt-2 w-full py-2.5 rounded-lg bg-gray-100 text-gray-400
-                       text-sm font-medium cursor-not-allowed"
-          >
-            Sold Out
-          </button>
-        ) : (
-          <a
-            href={product_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 flex items-center justify-center gap-1.5
-                       bg-maroon-700 hover:bg-maroon-800 text-white
-                       text-sm font-semibold py-2.5 rounded-lg transition-colors duration-200"
-          >
-            View Deal
-            <FiExternalLink size={12} />
-          </a>
-        )}
       </div>
     </article>
   )
