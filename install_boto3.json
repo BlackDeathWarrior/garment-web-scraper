@@ -1,0 +1,1 @@
+{"commands":["sudo -u ubuntu /home/ubuntu/garment-web-scraper/venv/bin/python3 -m pip install boto3 botocore","sudo systemctl restart scraper-worker"]}

@@ -1,0 +1,1 @@
+{"commands":["git -C /home/ubuntu/garment-web-scraper fetch origin","git -C /home/ubuntu/garment-web-scraper reset --hard origin/main","sudo -u ubuntu /home/ubuntu/garment-web-scraper/venv/bin/python3 -m playwright install","sudo systemctl restart scraper-worker"]}

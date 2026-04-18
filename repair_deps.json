@@ -1,0 +1,1 @@
+{"commands":["git config --global --add safe.directory /home/ubuntu/garment-web-scraper","git -C /home/ubuntu/garment-web-scraper fetch origin","git -C /home/ubuntu/garment-web-scraper reset --hard origin/main","sudo /home/ubuntu/garment-web-scraper/venv/bin/python3 -m playwright install-deps","sudo systemctl restart scraper-worker"]}

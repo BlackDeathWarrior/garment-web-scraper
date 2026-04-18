@@ -1,4 +1,5 @@
 import re
+import math
 from typing import Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -25,36 +26,32 @@ _MEN_ONLY_CATEGORIES = {
 
 # NUCLEAR EXCLUSION: Substrings that trigger immediate deletion if found anywhere
 _BANNED_SUBSTRINGS = [
-    "shoe", "footwear", "sandal", "slipper", "heel", "flat", "juttis", "mojaris", "loafer", "kolhapuri", "nagras",
+    "shoe", "footwear", "sandal", "slipper", "heel", "flat", "jutti", "mojari", "loafer", "kolhapuri", "nagras",
     "necklace", "jewel", "earring", "bangle", "ring", "pendant", "bracelet", "anklet", "jhumka", "choker", "haram",
     "watch", "wallet", "belt", "sunglasses", "handbag", "purse", "clutch", "nosepin", "nath", "maang", "tika",
     "kamarband", "mangalsutra", "gold plated", "silver plated", "oxidised", "jewelry set", "jewellery set",
-    "combo set", "combo of", "pack of", "artificial", "beads", "latkan", "tassels"
+    "combo set", "combo of", "pack of", "artificial", "beads", "latkan", "tassel", "chain", "ghungroo", "payal",
+    "unstitched", "fabric only", "material only"
 ]
 
 
 def calculate_trust_score(rating: Optional[float], count: Optional[int]) -> Optional[int]:
-    """Calculate a heuristic AI Trust Score (0-100) based on rating and volume."""
+    """Calculate a high-confidence AI Trust Score (0-100) using a logarithmic confidence penalty."""
     if not rating or not count or count == 0:
         return None
         
-    # Base score out of 100
-    base_score = (rating / 5.0) * 100
+    # Base score (0-100)
+    raw_score = (rating / 5.0) * 100
     
-    # Volume modifier (confidence increases with more reviews)
-    if count < 10:
-        modifier = 0.80  # Low confidence
-    elif count < 50:
-        modifier = 0.90
-    elif count < 500:
-        modifier = 0.98
-    elif count < 1000:
-        modifier = 1.00
-    else:
-        # Bonus for massive review counts maintaining high averages
-        modifier = min(1.05, 1.0 + (count / 50000))
-        
-    final_score = base_score * modifier
+    # Confidence Penalty: Use log scale to reach full weight at ~1000 reviews.
+    # Log10(1) = 0, Log10(1001) = 3. 
+    confidence = min(1.0, math.log10(count + 1) / 3.0) 
+    
+    # Logic: 50% of the score comes from raw rating, 50% is weighted by confidence.
+    # A single 5-star review (0 confidence) results in a score of 50.
+    # A 4.5-star review with 1000 items (1.0 confidence) results in a score of 90.
+    final_score = raw_score * (0.5 + (0.5 * confidence))
+    
     return max(1, min(99, int(round(final_score))))
 
 
