@@ -10,15 +10,11 @@ import subprocess
 import sys
 import threading
 import secrets
-import smtplib
-from email.message import EmailMessage
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# In-memory store for OTPs: { username: {"otp": str, "expires": datetime} }
-OTP_STORE: dict[str, dict[str, Any]] = {}
 from pathlib import Path
 from typing import Any
 import time
@@ -248,33 +244,6 @@ class ScrapeWorker:
         return asdict(self._status)
 
 
-def _send_otp_email(to_email: str, otp: str) -> bool:
-    host = os.environ.get("SMTP_HOST")
-    port = int(os.environ.get("SMTP_PORT") or 587)
-    user = os.environ.get("SMTP_USER")
-    password = os.environ.get("SMTP_PASS")
-    
-    if not all([host, user, password]):
-        print(f"ERROR: SMTP settings not configured in .env. Falling back to log-only. OTP for {to_email} is {otp}", flush=True)
-        return True # For development/testing ease if user hasn't set .env yet
-
-    msg = EmailMessage()
-    msg.set_content(f"Your Ethnic Threads One-Time Password is: {otp}\n\nThis code expires in 10 minutes.")
-    msg["Subject"] = "Your Ethnic Threads OTP"
-    msg["From"] = user
-    msg["To"] = to_email
-
-    try:
-        with smtplib.SMTP(host, port) as server:
-            server.starttls()
-            server.login(user, password)
-            server.send_message(msg)
-        return True
-    except Exception as exc:
-        print(f"ERROR: Failed to send OTP email: {exc}", flush=True)
-        return False
-
-
 class WorkerRequestHandler(BaseHTTPRequestHandler):
     worker: ScrapeWorker
 
@@ -312,35 +281,12 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
             # Simple admin auth check
             admin_user = os.environ.get("ADMIN_USERNAME")
             admin_pass = os.environ.get("ADMIN_PASSWORD")
-            admin_email = os.environ.get("ADMIN_EMAIL")
             
             if admin_user and user == admin_user and admin_pass and pw == admin_pass:
-                otp = "".join(secrets.choice("0123456789") for _ in range(6))
-                expires = datetime.now(timezone.utc) + timedelta(minutes=10)
-                OTP_STORE[user] = {"otp": otp, "expires": expires}
-                
-                target_email = admin_email or "admin@example.com"
-                if _send_otp_email(target_email, otp):
-                    self._send_json(HTTPStatus.OK, {"ok": True, "require_otp": True})
-                else:
-                    self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "reason": "email-failed"})
+                self._send_json(HTTPStatus.OK, {"ok": True, "token": "admin_session_active"})
                 return
             
             self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "reason": "invalid-credentials"})
-            return
-
-        if self.path.startswith("/api/auth/verify"):
-            payload = self._read_json_body()
-            user = payload.get("username")
-            otp = payload.get("otp")
-            
-            entry = OTP_STORE.get(user)
-            if entry and entry["otp"] == otp and entry["expires"] > datetime.now(timezone.utc):
-                del OTP_STORE[user]
-                self._send_json(HTTPStatus.OK, {"ok": True, "token": "admin_session_active"})
-                return
-                
-            self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "reason": "invalid-otp"})
             return
 
         if self.path.startswith("/api/scrape-cycle"):
