@@ -15,6 +15,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -347,9 +348,13 @@ def main() -> None:
     worker = ScrapeWorker(sources=args.sources, max_products=args.max_products)
     WorkerRequestHandler.worker = worker
 
-    # ON BY DEFAULT: Auto-start the initial scraper cycle in watch mode
-    print("Auto-starting initial scraper cycle in watch mode...", flush=True)
-    worker.trigger(reason="system-boot", watch=True)
+    # ON BY DEFAULT: Auto-start with a delay in a separate thread so we don't block the server
+    def _delayed_trigger():
+        time.sleep(10)
+        print("Auto-triggering initial scraper cycle (system-boot)...", flush=True)
+        worker.trigger(reason="system-boot", watch=True)
+    
+    threading.Thread(target=_delayed_trigger, daemon=True).start()
 
     server = ThreadingHTTPServer((args.host, args.port), WorkerRequestHandler)
     print(

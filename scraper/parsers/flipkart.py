@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import re
 from typing import Callable, Optional
@@ -38,14 +38,14 @@ LOW_YIELD_THRESHOLD = 4
 MAX_CONSECUTIVE_LOW_YIELD_PAGES = 2
 
 # Ordered by likelihood of matching - Flipkart rotates class names often
-_CARD_SEL = ["div[data-id]", "._1AtVbE > div", "._4ddWXP", ".cPHDOP", ".col"]
-_TITLE_SEL = ["._4rR01T", ".KzDlHZ", ".WKTcLC", ".atJtCj", "a._2Kn22P", "a[title]"]
-_PRICE_SEL = ["._30jeq3", "._1_WHN1", ".Nx9bqj", "._4b5DiR", ".hZ3P6w"]
-_ORIG_PRICE_SEL = ["._3I9_wc", "._2p6lqe", ".yRaY8j", "._25b18", ".kRYCnD"]
-_RATING_SEL = ["._3LWZlK", ".XQDdHH", "._1lRcqv"]
-_RATING_COUNT_SEL = ["._2_R_DZ", ".Wphh3N", "._13vcmD", ".Wphh3N span", "._2MZnfa"]
-_IMG_SEL = ["img._396cs4", "img._2r_T1I", "img.q6DClP", "img"]
-_BRAND_SEL = ["._2WkVRV", ".syl9yP", "._3wU53n", ".Fo1I0b"]
+_CARD_SEL = ["div[data-id]", "._1AtVbE > div", "._4ddWXP", ".cPHDOP", ".sl-87m", ".col"]
+_TITLE_SEL = ["._4rR01T", ".KzDlHZ", ".WKTcLC", ".atJtCj", "a._2Kn22P", "a[title]", ".IRpwFf"]
+_PRICE_SEL = ["._30jeq3", "._1_WHN1", ".Nx9bqj", "._4b5DiR", ".hZ3P6w", ".fM769W"]
+_ORIG_PRICE_SEL = ["._3I9_wc", "._2p6lqe", ".yRaY8j", "._25b18", ".kRYCnD", ".y30Y9L"]
+_RATING_SEL = ["._3LWZlK", ".XQDdHH", "._1lRcqv", ".ip_r93"]
+_RATING_COUNT_SEL = ["._2_R_DZ", ".Wphh3N", "._13vcmD", ".Wphh3N span", "._2MZnfa", ".X9vp_c"]
+_IMG_SEL = ["img._396cs4", "img._2r_T1I", "img.q6DClP", "img._53u06y", "img"]
+_BRAND_SEL = ["._2WkVRV", ".syl9yP", "._3wU53n", ".Fo1I0b", ".h699S2"]
 
 
 class FlipkartParser(BaseParser):
@@ -413,7 +413,7 @@ class FlipkartParser(BaseParser):
                         (item.get("aggregateRating") or {}).get("ratingValue") or ""
                     )
                 ),
-                rating_count=_parse_int(
+                rating_count=_parse_count(
                     str(
                         (item.get("aggregateRating") or {}).get("reviewCount") or ""
                     )
@@ -536,12 +536,14 @@ def _parse_price(text: str) -> Optional[float]:
 
 
 def _parse_rating(text: str) -> Optional[float]:
-    if not text:
-        return None
-    match = re.search(r"(\d+\.?\d*)", text)
+    if not text: return None
+    # Catch values like "4.5" or "4.5 out of 5"
+    match = re.search(r"(\d+\.?\d*)", str(text))
     if match:
-        val = float(match.group(1))
-        return val if 0 < val <= 5 else None
+        try:
+            val = float(match.group(1))
+            return val if 0 < val <= 5 else None
+        except ValueError: return None
     return None
 
 
@@ -556,23 +558,18 @@ def _parse_int(text: str) -> Optional[int]:
 
 
 def _parse_count(text: str) -> Optional[int]:
-    if not text:
-        return None
-    t = str(text).replace(",", "").strip().lower()
+    if not text: return None
+    # Remove all non-numeric chars except K/M suffixes
+    t = str(text).replace(",", "").replace("(", "").replace(")", "").strip().lower()
     match = re.search(r"(\d+(?:\.\d+)?)\s*([km]?)", t)
-    if not match:
-        return None
-    num = float(match.group(1))
-    suffix = match.group(2)
-    if suffix == "k":
-        num *= 1_000
-    elif suffix == "m":
-        num *= 1_000_000
+    if not match: return None
     try:
-        count = int(round(num))
-        return count if count > 0 else None
-    except ValueError:
-        return None
+        num = float(match.group(1))
+        suffix = match.group(2)
+        if suffix == "k": num *= 1000
+        elif suffix == "m": num *= 1000000
+        return int(round(num))
+    except ValueError: return None
 
 
 def _deep_pick_scalar(obj, keys: set[str], depth: int = 0):
