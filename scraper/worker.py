@@ -282,10 +282,14 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
             admin_user = os.environ.get("ADMIN_USERNAME")
             admin_pass = os.environ.get("ADMIN_PASSWORD")
             
+            print(f"DEBUG: Login attempt for user '{user}'. Configured admin: '{admin_user}'", flush=True)
+            
             if admin_user and user == admin_user and admin_pass and pw == admin_pass:
+                print(f"DEBUG: Login success for '{user}'", flush=True)
                 self._send_json(HTTPStatus.OK, {"ok": True, "token": "admin_session_active"})
                 return
             
+            print(f"DEBUG: Login failed for '{user}'. Provided pass matches configured: {pw == admin_pass}", flush=True)
             self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "reason": "invalid-credentials"})
             return
 
