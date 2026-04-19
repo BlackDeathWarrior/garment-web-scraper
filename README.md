@@ -15,8 +15,10 @@ An automated e-commerce intelligence tool that scrapes, normalizes, and showcase
 ### ⚡ High-Performance Frontend (React + Tailwind)
 - **Zero-Lag UI**: Optimized for massive datasets (10,000+ items) using memoization and local storage caching.
 - **Beautiful Showcase**: Elegant masonry-style product cards with hover Spec-Rows (Color, Fabric, Source).
+- **OTP Authentication**: Enhanced security with 2-step One-Time Password verification via email.
 - **Smart Filtering**: Instant client-side filtering by price range, ratings, source, and discount percentage.
-- **Admin Dashboard**: Secure login for `scraper_admin` to trigger real-time scrape cycles.
+- **Resilient Scraper**: Fixed to run indefinitely with built-in disk space monitoring (auto-stops if free space < 5%).
+- **Admin Dashboard**: Secure login for administrators to trigger real-time scrape cycles.
 
 ### ☁️ Cloud Architecture
 - **Serverless Backend**: Designed to run via AWS Lambda and API Gateway.

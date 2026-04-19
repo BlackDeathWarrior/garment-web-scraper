@@ -295,6 +295,12 @@ def run_watch_loop(max_products: int, sources: list[str], append_existing: bool,
     base_wait = max(60, int(interval_minutes * 60))
     log.banner(sources, interval_minutes, max_products, mode="watch")
     while max_runs == 0 or run_no < max_runs:
+        total, used, free = shutil.disk_usage(ROOT)
+        free_pct = free / total
+        if free_pct < 0.05:
+            log.error("watch", f"DISK SPACE CRITICAL: {free_pct:.1%} free. Stopping indefinitely.")
+            break
+
         run_no += 1
         log.cycle_start(run_no)
         def _checkpoint(partial_products: list[dict], source_name: str):
