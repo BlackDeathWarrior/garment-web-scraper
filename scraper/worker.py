@@ -19,12 +19,51 @@ from pathlib import Path
 from typing import Any
 import time
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional runtime fallback
+    load_dotenv = None
+
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS_DIR = ROOT / "outputs"
 LOGS_DIR = OUTPUTS_DIR / "logs"
 PUBLIC_LOG_FILE = ROOT / "frontend" / "public" / "scraper.log"
 DEFAULT_SOURCES = "amazon,myntra,flipkart"
+
+
+def _load_runtime_env() -> None:
+    """Load runtime env config from common local env files."""
+    if load_dotenv is None:
+        return
+    for env_file in (ROOT / ".env", ROOT / "frontend" / ".env"):
+        if env_file.is_file():
+            load_dotenv(env_file, override=False)
+
+
+def _sanitize_env_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    if len(trimmed) >= 2 and trimmed[0] == trimmed[-1] and trimmed[0] in {"'", '"'}:
+        return trimmed[1:-1]
+    return trimmed
+
+
+def _resolve_admin_credentials() -> tuple[str, str | None]:
+    admin_user = (
+        os.environ.get("ADMIN_USERNAME")
+        or os.environ.get("VITE_ADMIN_USERNAME")
+        or "scraper_admin"
+    )
+    admin_pass = (
+        os.environ.get("ADMIN_PASSWORD")
+        or os.environ.get("VITE_ADMIN_PASSWORD")
+    )
+    return _sanitize_env_value(admin_user) or "scraper_admin", _sanitize_env_value(admin_pass)
+
+
+_load_runtime_env()
 
 
 def _now_iso() -> str:
@@ -277,19 +316,27 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_body()
             user = payload.get("username")
             pw = payload.get("password")
-            
-            # Simple admin auth check
-            admin_user = os.environ.get("ADMIN_USERNAME")
-            admin_pass = os.environ.get("ADMIN_PASSWORD")
-            
-            print(f"DEBUG: Login attempt for user '{user}'. Configured admin: '{admin_user}'", flush=True)
-            
-            if admin_user and user == admin_user and admin_pass and pw == admin_pass:
+
+            admin_user, admin_pass = _resolve_admin_credentials()
+            print(
+                f"DEBUG: Login attempt for user '{user}'. Admin user configured: {bool(admin_user)}",
+                flush=True,
+            )
+
+            if not admin_pass:
+                print("DEBUG: Login blocked: admin password is not configured", flush=True)
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"ok": False, "reason": "admin-auth-not-configured"},
+                )
+                return
+
+            if user == admin_user and pw == admin_pass:
                 print(f"DEBUG: Login success for '{user}'", flush=True)
                 self._send_json(HTTPStatus.OK, {"ok": True, "token": "admin_session_active"})
                 return
-            
-            print(f"DEBUG: Login failed for '{user}'. Provided pass matches configured: {pw == admin_pass}", flush=True)
+
+            print(f"DEBUG: Login failed for '{user}'", flush=True)
             self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "reason": "invalid-credentials"})
             return
 
