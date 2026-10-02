@@ -1,5 +1,5 @@
 ﻿import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import ProductCard from '../components/ProductCard'
 
 const base = {
@@ -30,14 +30,9 @@ describe('ProductCard', () => {
     expect(screen.getByText('W for Woman')).toBeInTheDocument()
   })
 
-  it('renders source badge', () => {
-    render(<ProductCard product={base} />)
-    expect(screen.getByText('Flipkart', { selector: 'span' })).toBeInTheDocument()
-  })
-
-  it('renders amazon source badge', () => {
+  it('does not say where the listing was collected from: the shop sells it as its own', () => {
     render(<ProductCard product={{ ...base, source: 'amazon' }} />)
-    expect(screen.getByText('Amazon', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.queryByText('Amazon')).not.toBeInTheDocument()
   })
 
   it('renders discount badge', () => {
@@ -55,11 +50,12 @@ describe('ProductCard', () => {
     expect(screen.getByText(/\u20B91,799/)).toBeInTheDocument()
   })
 
-  it('view deal link points to product URL and opens in new tab', () => {
-    render(<ProductCard product={base} />)
-    const link = screen.getByRole('link', { name: /View Deal/i })
-    expect(link).toHaveAttribute('href', base.product_url)
-    expect(link).toHaveAttribute('target', '_blank')
+  it('opens the product when clicked, and links nowhere else', () => {
+    const onClick = vi.fn()
+    render(<ProductCard product={base} onClick={onClick} />)
+    fireEvent.click(screen.getByRole('article'))
+    expect(onClick).toHaveBeenCalledWith(base)
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
   it('hides original price when absent', () => {
@@ -77,28 +73,20 @@ describe('ProductCard', () => {
     expect(screen.queryByText(/4740% OFF/)).not.toBeInTheDocument()
   })
 
-  it('renders Myntra source badge', () => {
-    render(<ProductCard product={{ ...base, source: 'myntra' }} />)
-    expect(screen.getByText('Myntra', { selector: 'span' })).toBeInTheDocument()
-  })
-
-  it('renders inferred women flair', () => {
-    render(<ProductCard product={base} />)
+  it('renders the women flair', () => {
+    render(<ProductCard product={{ ...base, target_gender: 'Women' }} />)
     expect(screen.getByText('Women', { selector: 'span' })).toBeInTheDocument()
   })
 
-  it('renders inferred men flair', () => {
-    render(
-      <ProductCard
-        product={{
-          ...base,
-          title: "Manyavar Men's Embroidered Kurta",
-          brand: 'Manyavar',
-          category: null,
-        }}
-      />
-    )
+  it('renders the men flair', () => {
+    render(<ProductCard product={{ ...base, target_gender: 'Men' }} />)
     expect(screen.getByText('Men', { selector: 'span' })).toBeInTheDocument()
+  })
+
+  it('renders both flairs for a unisex product', () => {
+    render(<ProductCard product={{ ...base, target_gender: 'Unisex' }} />)
+    expect(screen.getByText('Men', { selector: 'span' })).toBeInTheDocument()
+    expect(screen.getByText('Women', { selector: 'span' })).toBeInTheDocument()
   })
 
   it('does not render children flair labels', () => {
@@ -135,7 +123,7 @@ describe('ProductCard', () => {
       />
     )
     expect(screen.getByText('4.4')).toBeInTheDocument()
-    expect(screen.getByText(/\(1.2K\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/1\.2K\s+ratings/i)).toBeInTheDocument()
   })
 
   it('parses human-readable rating strings', () => {
@@ -149,12 +137,14 @@ describe('ProductCard', () => {
       />
     )
     expect(screen.getByText('4.1')).toBeInTheDocument()
-    expect(screen.getByText(/\(2.3K\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/2\.3K\s+ratings/i)).toBeInTheDocument()
   })
 
-  it('shows explicit fallback badge when image is missing', () => {
+  it('shows a placeholder picture when the image is missing', () => {
     render(<ProductCard product={{ ...base, image_url: null }} />)
-    expect(screen.getByText(/No image/i)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Cotton Straight Kurta/i }).getAttribute('src')).toMatch(
+      /^data:image\/svg\+xml/
+    )
   })
 
   it('resets image fallback state when a new product image arrives', () => {
@@ -163,7 +153,7 @@ describe('ProductCard', () => {
     )
 
     fireEvent.error(screen.getByRole('img', { name: /Cotton Straight Kurta/i }))
-    expect(screen.getByText(/No image/i)).toBeInTheDocument()
+    expect(screen.getByText(/Image Load Failed/i)).toBeInTheDocument()
 
     rerender(
       <ProductCard
@@ -176,6 +166,6 @@ describe('ProductCard', () => {
       />
     )
 
-    expect(screen.queryByText(/No image/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Image Load Failed/i)).not.toBeInTheDocument()
   })
 })

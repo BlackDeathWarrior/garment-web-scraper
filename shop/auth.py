@@ -48,7 +48,7 @@ def _hash(password: str, salt: str) -> str:
 
 
 def _admin() -> tuple:
-    name = (os.environ.get("ADMIN_USERNAME") or "scraper_admin").strip().strip("'\"")
+    name = (os.environ.get("ADMIN_USERNAME") or "shop_admin").strip().strip("'\"")
     password = (os.environ.get("ADMIN_PASSWORD") or "").strip().strip("'\"")
     return name, password or None
 

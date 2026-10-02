@@ -11,7 +11,7 @@ const mockProducts = [
 const defaultFilters = { sources: [], brands: [], colors: [], genders: [], sort: 'default' }
 
 describe('FilterSidebar', () => {
-  it('renders source options derived from products', () => {
+  it('offers no filter by where a listing was collected from', () => {
     render(
       <FilterSidebar
         filters={defaultFilters}
@@ -21,9 +21,9 @@ describe('FilterSidebar', () => {
         onClose={() => {}}
       />
     )
-    expect(screen.getByText('Flipkart')).toBeInTheDocument()
-    expect(screen.getByText('Myntra')).toBeInTheDocument()
-    expect(screen.getByText('Amazon')).toBeInTheDocument()
+    expect(screen.queryByText('Flipkart')).not.toBeInTheDocument()
+    expect(screen.queryByText('Myntra')).not.toBeInTheDocument()
+    expect(screen.queryByText('Amazon')).not.toBeInTheDocument()
   })
 
   it('renders brand options', () => {
@@ -75,7 +75,7 @@ describe('FilterSidebar', () => {
   it('shows Clear button when filters are active', () => {
     render(
       <FilterSidebar
-        filters={{ ...defaultFilters, sources: ['flipkart'] }}
+        filters={{ ...defaultFilters, brands: ['Biba'] }}
         onFiltersChange={() => {}}
         products={mockProducts}
         isOpen={true}

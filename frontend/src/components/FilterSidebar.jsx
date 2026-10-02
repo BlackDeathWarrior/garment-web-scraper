@@ -22,7 +22,6 @@ export default function FilterSidebar({
 
   const brands  = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort()
   const colors  = [...new Set(products.map((p) => p.color).filter(Boolean))].sort()
-  const sources = [...new Set(products.map((p) => p.source).filter(Boolean))].sort()
   const fabrics = [...new Set(products.map((p) => p.fabric).filter(Boolean))].sort()
 
   const filteredBrands = brands.filter(b => 
@@ -133,23 +132,6 @@ export default function FilterSidebar({
             ))}
           </div>
         </Section>
-
-        {/* Source */}
-        {sources.length > 0 && (
-          <Section title="Source">
-            <div className="grid gap-1">
-              {sources.map((s) => (
-                <CheckItem
-                  key={s}
-                  id={`source-${s}`}
-                  label={s.charAt(0).toUpperCase() + s.slice(1)}
-                  checked={filters.sources?.includes(s) ?? false}
-                  onChange={() => toggle('sources', s)}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
 
         {/* Brand - SEARCHABLE */}
         <Section title="Brand">

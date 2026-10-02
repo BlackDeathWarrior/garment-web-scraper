@@ -7,12 +7,6 @@ const FALLBACK_SRC =
 const STAR_GLYPHS = '\u2605'.repeat(5)
 const RUPEE = '\u20B9'
 
-const SOURCE_STYLE = {
-  flipkart: { bg: 'bg-blue-600', label: 'Flipkart' },
-  myntra:   { bg: 'bg-pink-600', label: 'Myntra' },
-  amazon:   { bg: 'bg-amber-600', label: 'Amazon' },
-}
-
 function genderBadgeClass(label) {
   if (label === 'Men')   return 'bg-slate-700 text-white'
   if (label === 'Women') return 'bg-rose-600 text-white'
@@ -112,7 +106,6 @@ export default function ProductCard({ product, onClick }) {
   const {
     title,
     brand,
-    source,
     price_current,
     price_original,
     discount_percent,
@@ -162,7 +155,6 @@ export default function ProductCard({ product, onClick }) {
   const isLowStock = !isSoldOut && stock_count != null && stock_count <= 5
   const showDiscount = !isSoldOut && normalizedDiscount != null
   const hasPrimaryImage = Boolean(normalizedImageUrl)
-  const src = SOURCE_STYLE[source] ?? { bg: 'bg-gray-600', label: source }
   
   // Unisex Support: Render multiple badges
   const genders = target_gender === 'Unisex' ? ['Men', 'Women'] : [target_gender].filter(Boolean)
@@ -232,11 +224,6 @@ export default function ProductCard({ product, onClick }) {
             </span>
           </div>
         )}
-
-        <span className={`absolute top-2 right-2 ${src.bg} text-white
-                          text-[11px] font-semibold px-2.5 py-1 rounded-full shadow`}>
-          {src.label}
-        </span>
       </div>
 
       <div className="p-4 flex flex-col flex-1 gap-2">

@@ -45,6 +45,8 @@ export default function Admin() {
   if (!isAdmin(user)) return <Navigate to="/login?next=/admin" replace />
 
   const change = async (changes) => {
+    // Shown at once; the shop's answer then confirms it (or the next refresh corrects it).
+    setSwitches((current) => ({ ...current, ...changes }))
     try {
       const result = await api('/admin/simulation', { method: 'PUT', body: changes })
       setSwitches(result.switches)

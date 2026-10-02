@@ -20,24 +20,15 @@ describe('Pagination', () => {
     expect(screen.getByRole('button', { name: '4' })).toBeInTheDocument()
   })
 
-  it('calls both handlers when per-page option changes', () => {
-    const onPerPageChange = vi.fn()
+  it('goes to the page that is clicked, and to the next one', () => {
     const onPageChange = vi.fn()
 
-    render(
-      <Pagination
-        total={120}
-        perPage={25}
-        page={2}
-        onPerPageChange={onPerPageChange}
-        onPageChange={onPageChange}
-      />
-    )
+    render(<Pagination total={120} perPage={25} page={2} onPageChange={onPageChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '50' }))
-
-    expect(onPerPageChange).toHaveBeenCalledWith(50)
-    expect(onPageChange).toHaveBeenCalledWith(1)
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    expect(onPageChange).toHaveBeenCalledWith(4)
+    fireEvent.click(screen.getByTitle('Next page'))
+    expect(onPageChange).toHaveBeenCalledWith(3)
   })
 
   it('returns null when there are no products', () => {
