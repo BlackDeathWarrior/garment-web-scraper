@@ -15,10 +15,19 @@ const MAX_SAVED = 30
 
 let configPromise = null
 
-/** What is switched on. Never rejects: with no shop server, everything is off. */
+/**
+ * What is switched on. Never rejects: with no shop server, everything is off.
+ * Only a real answer is remembered. A failed call (the shop server restarting,
+ * a dropped connection) is asked again next time, instead of leaving the chat
+ * and every form switched off until the page is reloaded.
+ */
 export function getSupportConfig() {
   if (!configPromise) {
-    configPromise = api('/support/config').catch(() => ({ tickets: false, widget: null, issues: [], topics: [] }))
+    const asked = api('/support/config').catch(() => {
+      if (configPromise === asked) configPromise = null
+      return { tickets: false, widget: null, issues: [], topics: [], failed: true }
+    })
+    configPromise = asked
   }
   return configPromise
 }
