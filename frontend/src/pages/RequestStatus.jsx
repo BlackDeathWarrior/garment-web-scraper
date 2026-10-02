@@ -19,6 +19,10 @@ import {
 } from '../lib/support'
 
 const CHANGES_EVERY_MS = 4000
+// While the assistant is writing, look for its answer more often.
+const CHANGES_WHILE_TYPING_MS = 1500
+// The assistant answers within seconds. After this long the dots would promise an answer that may not come.
+const TYPING_MAX_MS = 45000
 // Without webhooks the shop cannot tell us about news, so the page asks the desk itself.
 const REFETCH_EVERY_MS = 20000
 
@@ -30,6 +34,17 @@ export const STATE_STYLES = {
 }
 
 const AUTHORS = { customer: 'You', assistant: 'Support assistant', support: 'Support', system: 'Support' }
+
+/**
+ * The shopper's message the assistant is answering right now, or null. The
+ * support desk says who answers a request (`handling`); when that is the
+ * assistant and the shopper wrote last, an answer is being written.
+ */
+export function awaitedMessage(request) {
+  if (!request || request.handling !== 'ai' || request.state === 'closed') return null
+  const last = request.messages[request.messages.length - 1]
+  return last && last.from === 'customer' ? last : null
+}
 
 export default function RequestStatus() {
   const { reference } = useParams()
@@ -131,6 +146,17 @@ function RequestDetail({ reference }) {
   const [request, setRequest] = useState(null)
   const [error, setError] = useState('')
   const version = useRef(undefined)
+  // The message being answered and when this page first saw it unanswered.
+  const awaited = useRef({ id: null, since: 0 })
+  const [, setTick] = useState(0)
+
+  const waitingFor = awaitedMessage(request)
+  if (waitingFor?.id !== awaited.current.id) {
+    awaited.current = { id: waitingFor?.id ?? null, since: Date.now() }
+  }
+  const typing = Boolean(waitingFor) && Date.now() - awaited.current.since < TYPING_MAX_MS
+  const typingNow = useRef(typing)
+  typingNow.current = typing
 
   const load = useCallback(async () => {
     try {
@@ -155,17 +181,29 @@ function RequestDetail({ reference }) {
     }
     void load()
     let lastFull = Date.now()
-    const timer = setInterval(async () => {
+    let timer
+    let stopped = false
+    const check = async () => {
       try {
         const changes = await requestChanges(reference, token)
-        const stale = !changes.live && Date.now() - lastFull > REFETCH_EVERY_MS
+        // Without webhooks nothing tells us the answer has arrived, so while it is being written we ask.
+        const refetchEvery = typingNow.current ? CHANGES_WHILE_TYPING_MS : REFETCH_EVERY_MS
+        const stale = !changes.live && Date.now() - lastFull >= refetchEvery
         if (changes.version !== version.current || stale) {
           lastFull = Date.now()
           await load()
         }
       } catch {}
-    }, CHANGES_EVERY_MS)
-    return () => clearInterval(timer)
+      if (stopped) return
+      // Also redraws, so the dots go when their time is up.
+      setTick((n) => n + 1)
+      timer = setTimeout(check, typingNow.current ? CHANGES_WHILE_TYPING_MS : CHANGES_EVERY_MS)
+    }
+    timer = setTimeout(check, CHANGES_WHILE_TYPING_MS)
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+    }
   }, [reference, token, user, load])
 
   return (
@@ -207,6 +245,7 @@ function RequestDetail({ reference }) {
             {request.messages.map((message) => (
               <Message key={message.id} message={message} />
             ))}
+            {typing && <Typing />}
           </ol>
 
           {!request.mine && (
@@ -238,6 +277,26 @@ function Message({ message }) {
           {author} · {formatWhen(message.createdAt)}
         </p>
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.body}</p>
+      </div>
+    </li>
+  )
+}
+
+/** Three moving dots where the assistant's answer will appear. */
+function Typing() {
+  return (
+    <li className="flex justify-start" data-testid="assistant-typing">
+      <div role="status" aria-label="Support assistant is typing" className="rounded-2xl px-4 py-3 border bg-white border-gray-100">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-gray-400">Support assistant</p>
+        <span className="flex items-center gap-1 h-4" aria-hidden="true">
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce motion-reduce:animate-none"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </span>
       </div>
     </li>
   )

@@ -11,7 +11,7 @@ import Checkout from '../pages/Checkout'
 import Contact from '../pages/Contact'
 import Login, { nextPath } from '../pages/Login'
 import OrderDetail from '../pages/OrderDetail'
-import RequestStatus from '../pages/RequestStatus'
+import RequestStatus, { awaitedMessage } from '../pages/RequestStatus'
 import { clearSession, getSession, setSession } from '../lib/auth'
 import { addToCart, cartCount, cartItems, cartSubtotal, clearCart, getCart, setQuantity } from '../lib/cart'
 import { resetSupportConfig, setSupportContext, tokenFor } from '../lib/support'
@@ -449,6 +449,40 @@ describe('help', () => {
     at('/requests/TMS-41', pages)
     await screen.findByTestId('request-status')
     expect(screen.queryByText('How did we do?')).toBeNull()
+  })
+
+  it('shows the assistant writing while it answers, and not once a person has the request', async () => {
+    setSession('v1.session', ASHA)
+    const asked = {
+      ...request,
+      status: 'AI handling',
+      state: 'open',
+      handling: 'ai',
+      messages: [request.messages[0]],
+    }
+    stubFetch({
+      'GET /api/support/requests/TMS-41/changes': { body: { ok: true, version: 'd-1', live: true } },
+      'GET /api/support/requests/TMS-41': { body: asked },
+    })
+    const { unmount } = at('/requests/TMS-41', pages)
+    expect(await screen.findByRole('status', { name: 'Support assistant is typing' })).toBeInTheDocument()
+    unmount()
+
+    // The assistant has answered: nothing is being written.
+    const answered = { ...asked, messages: [...asked.messages, { id: 'm2', from: 'assistant', name: null, body: 'It arrives today.', createdAt: '2026-10-02T10:00:05.000Z' }] }
+    expect(awaitedMessage(answered)).toBeNull()
+    // Handed to a person: the page does not pretend the assistant is writing.
+    expect(awaitedMessage({ ...asked, handling: 'handed_over' })).toBeNull()
+    expect(awaitedMessage({ ...asked, handling: 'human' })).toBeNull()
+    expect(awaitedMessage(asked)).toEqual(asked.messages[0])
+
+    stubFetch({
+      'GET /api/support/requests/TMS-41/changes': { body: { ok: true, version: 'd-1', live: true } },
+      'GET /api/support/requests/TMS-41': { body: { ...asked, handling: 'handed_over', status: 'Human Assigned' } },
+    })
+    at('/requests/TMS-41', pages)
+    expect(await screen.findByTestId('request-status')).toHaveTextContent('Human Assigned')
+    expect(screen.queryByTestId('assistant-typing')).toBeNull()
   })
 
   it('lets the admin read a request, not answer for the shopper', async () => {

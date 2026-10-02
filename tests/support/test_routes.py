@@ -187,6 +187,7 @@ TICKET = {
     "reference": "TMS-41",
     "subject": "Bug Report: The filter for sarees shows kurtas.",
     "status": {"key": "pending_customer", "name": "Waiting for you", "state": "pending"},
+    "handling": "ai",
     "externalRef": None,
     "customer": {"name": "Asha Verma", "email": "asha@shopper.example"},
     "metadata": {"form": "contact"},
@@ -212,6 +213,8 @@ def test_a_request_is_read_only_with_its_tracking_token(desk):
     assert status == 200
     assert body["status"] == "Waiting for you"
     assert body["state"] == "pending"
+    # Who is answering, so the page can show the assistant writing.
+    assert body["handling"] == "ai"
     assert [m["from"] for m in body["messages"]] == ["customer", "support"]
     assert body["messages"][1]["name"] == "Maya"
     # The page gets what it shows, and no more of the ticket.

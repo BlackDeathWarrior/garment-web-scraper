@@ -55,6 +55,7 @@ The admin signs in on the same sign-in page with `ADMIN_USERNAME` and `ADMIN_PAS
 | **Get help with this order** | A ticket for the signed-in shopper, with the order number as its reference and the order's facts (status, carrier, tracking, items, total, payment) taken from the shop's own records, never from the browser |
 | **Contact** | A ticket for a visitor. Reading it back needs the tracking token in the link |
 | **Help** | The shopper's own tickets, listed by the shop's id for that shopper. No link or token is needed when signed in |
+| **A request's page** | The conversation. While the desk's assistant is answering (the ticket's `handling` is `ai` and the shopper wrote last) the page shows it writing, for at most 45 seconds. When the assistant hands over, the desk's own message says who will reply |
 | **Chat** | A signed-in shopper is vouched for with a signed identity token, so the desk knows who is asking. A visitor who only types a name and an email is not vouched for |
 | **Failed payments, carrier delays** | Incidents. Repeats are counted on one ticket; a recovery resolves it |
 | **Webhooks from the desk** | Verified by signature, stored once, shown in the admin's activity feed, and used to refresh an open request page |
