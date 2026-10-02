@@ -128,7 +128,7 @@ export default function SupportPanel() {
             <ul className="divide-y divide-gray-100">
               {tickets.map((ticket) => (
                 <li key={ticket.reference} className="py-2.5 flex items-center justify-between gap-3">
-                  <Link to={requestLink(ticket.reference, ticket.token)} className="min-w-0 hover:text-maroon-700">
+                  <Link to={requestLink(ticket.reference)} className="min-w-0 hover:text-maroon-700">
                     <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       {ticket.reference}
                     </span>

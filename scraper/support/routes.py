@@ -474,7 +474,6 @@ def _overview(_: Request) -> Response:
                     "priority": t.get("priority"),
                     "handling": t.get("handling"),
                     "updatedAt": t.get("updatedAt"),
-                    "token": tokens.tracking_token(_tracking_secret(settings), str(t.get("reference"))),
                 }
                 for t in page.get("items", [])
             ]

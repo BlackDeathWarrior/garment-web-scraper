@@ -405,7 +405,9 @@ def test_the_admin_overview_shows_tickets_incidents_and_activity(desk):
     assert status == 200
     assert body["configured"] == {"tickets": True, "incidents": True, "webhooks": True}
     assert body["tickets"][0]["reference"] == "TMS-41"
-    assert body["tickets"][0]["token"] == tokens.tracking_token(WEB_KEY, "TMS-41")
+    # The admin reads requests with the session; a shopper's tracking token is never handed out.
+    assert "token" not in body["tickets"][0]
+    assert tokens.tracking_token(WEB_KEY, "TMS-41") not in json.dumps(body)
     assert body["incidents"][0]["occurrences"] == 3
     assert [e["id"] for e in body["events"]] == ["d-3"]
     assert "?status=open" in desk.calls("GET", "/integration/incidents")[0]["path"]

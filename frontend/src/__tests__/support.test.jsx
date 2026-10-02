@@ -223,7 +223,7 @@ describe('SupportPanel', () => {
           incidents: [
             { id: 'i1', fingerprint: 'scraper.run_failed', title: 'Scraper run failed (exit code 1)', occurrences: 3, firstSeenAt: '2026-10-02T09:00:00.000Z', ticket: 'TMS-7' },
           ],
-          tickets: [{ reference: 'TMS-41', subject: 'Bug Report: filter', status: 'In Progress', token: 'abc123' }],
+          tickets: [{ reference: 'TMS-41', subject: 'Bug Report: filter', status: 'In Progress' }],
           events: [
             { id: 'e1', type: 'message.created', reference: 'TMS-41', at: '2026-10-02T10:05:00.000Z', message: { from: 'support', name: 'Maya', preview: 'Fixed, thank you.' } },
             { id: 'e2', type: 'csat.submitted', reference: 'TMS-41', at: '2026-10-02T10:06:00.000Z', rating: 5 },
@@ -236,7 +236,7 @@ describe('SupportPanel', () => {
     expect(screen.getByText(/Reported 3 times/)).toBeInTheDocument()
     expect(screen.getByText('Maya: Fixed, thank you.')).toBeInTheDocument()
     expect(screen.getByText('5 out of 5')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /TMS-41/ })).toHaveAttribute('href', '/requests/TMS-41#abc123')
+    expect(screen.getByRole('link', { name: /TMS-41/ })).toHaveAttribute('href', '/requests/TMS-41')
     // The admin's session goes with the call.
     expect(calls[0].headers.Authorization).toBe('Bearer v1.123.sig')
   })
