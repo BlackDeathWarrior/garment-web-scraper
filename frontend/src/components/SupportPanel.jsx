@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FiActivity, FiAlertTriangle, FiCheckCircle, FiInbox } from 'react-icons/fi'
 import { adminOverview, formatWhen, requestLink } from '../lib/support'
 
-const REFRESH_MS = 10000
+const REFRESH_MS = 8000
 
 const EVENT_LABELS = {
   'ticket.created': 'New request',
@@ -36,8 +36,8 @@ function describe(event) {
 }
 
 /**
- * The admin's view of the support desk: what the scraper has reported, what
- * shoppers have asked, and what the desk has told us (its webhooks).
+ * The admin's view of the support desk: what the shop has reported about
+ * itself, what shoppers have asked, and what the desk has told us (its webhooks).
  */
 export default function SupportPanel() {
   const [overview, setOverview] = useState(null)
@@ -76,7 +76,16 @@ export default function SupportPanel() {
   }
   if (!overview) return null
   const { configured } = overview
-  if (!configured.tickets && !configured.incidents) return null
+  if (!configured.tickets && !configured.incidents) {
+    return (
+      <section className="p-6 rounded-2xl bg-white border border-gray-200 shadow-sm" aria-label="Support desk">
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-2">
+          <FiInbox className="text-maroon-700" /> Support Desk
+        </h2>
+        <p className="text-sm text-gray-600">No support desk is connected (see SUPPORT_DESK.md).</p>
+      </section>
+    )
+  }
 
   const incidents = overview.incidents || []
   const tickets = overview.tickets || []

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { FiArrowLeft, FiInbox, FiSend, FiStar } from 'react-icons/fi'
+import { FiArrowLeft, FiInbox, FiPackage, FiSend, FiStar } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
+import { isShopper, useUser } from '../lib/auth'
 import {
-  adminSession,
   formatWhen,
   isRated,
+  myRequests,
   newRequestId,
   rateRequest,
   readRequest,
@@ -18,10 +19,10 @@ import {
 } from '../lib/support'
 
 const CHANGES_EVERY_MS = 4000
-// Without webhooks the worker cannot tell us about news, so the page asks the desk itself.
+// Without webhooks the shop cannot tell us about news, so the page asks the desk itself.
 const REFETCH_EVERY_MS = 20000
 
-const STATE_STYLES = {
+export const STATE_STYLES = {
   open: 'bg-amber-50 text-amber-800 border-amber-200',
   pending: 'bg-sky-50 text-sky-800 border-sky-200',
   resolved: 'bg-emerald-50 text-emerald-800 border-emerald-200',
@@ -34,7 +35,7 @@ export default function RequestStatus() {
   const { reference } = useParams()
   return (
     <div className="min-h-screen bg-[#faf8f5]">
-      <Navbar search="" onSearch={() => {}} productCount={null} />
+      <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-10">
         {reference ? <RequestDetail reference={reference.toUpperCase()} /> : <RequestList />}
       </div>
@@ -42,49 +43,90 @@ export default function RequestStatus() {
   )
 }
 
+/** A signed-in shopper's requests come from the support desk; a guest's are the ones sent from this browser. */
 function RequestList() {
-  const requests = savedRequests()
+  const user = useUser()
+  const [requests, setRequests] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isShopper(user)) {
+      setRequests(
+        savedRequests()
+          .filter((r) => r.token)
+          .map((r) => ({ ...r, updatedAt: r.savedAt }))
+      )
+      return undefined
+    }
+    let active = true
+    myRequests()
+      .then((found) => active && setRequests(found))
+      .catch((err) => active && setError(err.message))
+    return () => {
+      active = false
+    }
+  }, [user])
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">My Requests</h1>
-      <p className="text-gray-600 mb-8">Messages and listing reports sent from this browser.</p>
-      {requests.length === 0 ? (
+      <h1 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">Help</h1>
+      <p className="text-gray-600 mb-6">
+        Your requests to support.{' '}
+        <Link to="/contact" className="font-bold text-maroon-700 hover:underline">
+          Write to us
+        </Link>
+        {isShopper(user) && (
+          <>
+            {' '}
+            or, for an order, open it under{' '}
+            <Link to="/orders" className="font-bold text-maroon-700 hover:underline">
+              Your orders
+            </Link>
+          </>
+        )}
+        .
+      </p>
+      {error && <p role="alert" className="text-sm text-red-700 mb-4">{error}</p>}
+      {requests && requests.length === 0 && (
         <div className="bg-white rounded-3xl border border-gray-100 p-10 text-center">
           <FiInbox className="mx-auto text-gray-300 mb-4" size={36} />
-          <p className="text-gray-600 mb-4">You have not sent us anything yet.</p>
-          <Link to="/contact" className="text-maroon-700 font-bold hover:underline">
-            Write to us
-          </Link>
+          <p className="text-gray-600">You have not asked us anything yet.</p>
         </div>
-      ) : (
-        <ul className="space-y-3">
-          {requests.map((request) => (
-            <li key={request.reference}>
-              <Link
-                to={requestLink(request.reference, request.token)}
-                className="flex items-center justify-between gap-4 bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:border-maroon-300 transition-colors"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    {request.reference}
-                  </span>
-                  <span className="block text-sm font-semibold text-gray-900 truncate">
-                    {request.subject || 'Request'}
-                  </span>
-                </span>
-                <span className="text-xs text-gray-400 shrink-0">{formatWhen(request.savedAt)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
       )}
+      <ul className="space-y-3" aria-label="Your requests">
+        {(requests || []).map((request) => (
+          <li key={request.reference}>
+            <Link
+              to={requestLink(request.reference, request.token)}
+              className="flex items-center justify-between gap-4 bg-white rounded-2xl border border-gray-100 px-5 py-4 hover:border-maroon-300 transition-colors"
+            >
+              <span className="min-w-0">
+                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {request.reference}
+                  {request.orderId ? ` · Order ${request.orderId}` : ''}
+                </span>
+                <span className="block text-sm font-semibold text-gray-900 truncate">{request.subject || 'Request'}</span>
+              </span>
+              <span className="shrink-0 text-right">
+                {request.status && (
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${STATE_STYLES[request.state] || STATE_STYLES.open}`}>
+                    {request.status}
+                  </span>
+                )}
+                <span className="block text-xs text-gray-400 mt-1">{formatWhen(request.updatedAt)}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
 
 function RequestDetail({ reference }) {
   const location = useLocation()
-  // The link carries the token in its fragment; a request made here is also remembered.
+  const user = useUser()
+  // A guest's link carries the token in its fragment; a request made here is also remembered.
   const token = location.hash.replace(/^#/, '') || tokenFor(reference)
   const [request, setRequest] = useState(null)
   const [error, setError] = useState('')
@@ -96,21 +138,19 @@ function RequestDetail({ reference }) {
       version.current = found.version
       setRequest(found)
       setError('')
-      if (token) {
-        saveRequest({ reference: found.reference, token, subject: found.subject, rated: isRated(reference) })
-      }
+      if (token) saveRequest({ reference: found.reference, token, subject: found.subject })
     } catch (err) {
       setError(
         err.status === 404
-          ? 'We could not find that request. Open it from the link you were given, in the browser you sent it from.'
+          ? 'We could not find that request. Sign in, or open it from the link you were given.'
           : err.message
       )
     }
   }, [reference, token])
 
   useEffect(() => {
-    if (!token && !adminSession()) {
-      setError('We could not find that request. Open it from the link you were given, in the browser you sent it from.')
+    if (!token && !user) {
+      setError('We could not find that request. Sign in, or open it from the link you were given.')
       return undefined
     }
     void load()
@@ -126,12 +166,12 @@ function RequestDetail({ reference }) {
       } catch {}
     }, CHANGES_EVERY_MS)
     return () => clearInterval(timer)
-  }, [reference, token, load])
+  }, [reference, token, user, load])
 
   return (
     <div>
       <Link to="/requests" className="inline-flex items-center gap-1.5 text-sm font-bold text-maroon-700 hover:underline mb-6">
-        <FiArrowLeft size={14} /> My requests
+        <FiArrowLeft size={14} /> Help
       </Link>
 
       {error && (
@@ -146,6 +186,14 @@ function RequestDetail({ reference }) {
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{request.reference}</p>
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight break-words">{request.subject}</h1>
+              {request.orderId && request.mine && (
+                <Link
+                  to={`/orders/${request.orderId}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-maroon-700 hover:underline mt-1"
+                >
+                  <FiPackage size={14} /> Order {request.orderId}
+                </Link>
+              )}
             </div>
             <span
               data-testid="request-status"
@@ -161,17 +209,15 @@ function RequestDetail({ reference }) {
             ))}
           </ol>
 
-          {!token && (
+          {!request.mine && (
             <p className="text-sm text-gray-500 bg-white rounded-2xl border border-gray-100 px-4 py-3">
-              You are reading this as the site admin. Replies and ratings are the shopper's own.
+              You are reading this as the shop's admin. Replies and ratings are the shopper's own.
             </p>
           )}
-          {token && request.state === 'resolved' && !isRated(reference) && (
+          {request.mine && request.state === 'resolved' && !isRated(reference) && (
             <Rating reference={reference} token={token} subject={request.subject} />
           )}
-          {token && request.state !== 'closed' && (
-            <Reply reference={reference} token={token} onSent={load} />
-          )}
+          {request.mine && request.state !== 'closed' && <Reply reference={reference} token={token} onSent={load} />}
         </>
       )}
     </div>

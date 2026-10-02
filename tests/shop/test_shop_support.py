@@ -68,7 +68,7 @@ def test_help_with_an_order_carries_the_order_from_our_records(asha, desk):
         "form": "order_help",
         "issue": "Where is my order?",
         "order_id": order["id"],
-        "status": "order placed",
+        "status": "confirmed and being prepared",
         "placed_at": order["placedAt"],
         "estimated_delivery": order["delivery"]["expected"],
         "delayed": False,

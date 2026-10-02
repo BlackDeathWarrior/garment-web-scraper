@@ -39,6 +39,17 @@ PAYMENT_STATUS = {
     "not_charged": "Not charged",
     "refunded": "Refunded",
 }
+# How support says where an order is: "Order ET-100001 is <this>".
+STATUS_WORDS = {
+    "placed": "confirmed and being prepared",
+    "packed": "packed and waiting for the carrier",
+    "shipped": "shipped",
+    "out_for_delivery": "out for delivery",
+    "delivered": "delivered",
+    "cancelled": "cancelled",
+    "return_requested": "waiting for its return to be approved",
+    "refunded": "returned and refunded",
+}
 # An invented carrier: nothing is handed to a real one.
 CARRIER = "SwiftShip"
 CURRENCY = "INR"
@@ -520,7 +531,7 @@ def facts(order: Dict[str, Any]) -> Dict[str, Any]:
     titles = [item["title"] for item in order["items"]]
     return {
         "order_id": order["id"],
-        "status": order["statusLabel"].lower(),
+        "status": STATUS_WORDS[order["status"]],
         "placed_at": order["placedAt"],
         "estimated_delivery": order["delivery"]["expected"],
         "delayed": order["delayed"],

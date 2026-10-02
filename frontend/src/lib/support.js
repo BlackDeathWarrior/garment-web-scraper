@@ -1,64 +1,24 @@
 // The storefront's side of the support desk integration.
 //
 // The browser never talks to the support desk's API and never holds a key:
-// it asks our own worker (/api/support/*), which does. A shopper reads a
-// request back with the tracking token the worker returned when it was made;
-// those are kept here, in this browser.
+// it asks the shop (/api/support/*), which does. A signed-in shopper's
+// requests are found under their account. A guest reads the one request they
+// sent with the tracking token in its link, which is kept in this browser.
+
+import { api, ApiError } from './api'
+import { getSession } from './auth'
+
+export { ApiError as SupportError }
 
 const REQUESTS_KEY = 'ethnic-threads-requests-v1'
 const MAX_SAVED = 30
 
-export class SupportError extends Error {
-  constructor(message, status, reason) {
-    super(message)
-    this.name = 'SupportError'
-    this.status = status
-    this.reason = reason
-  }
-}
-
-const apiBase = () => import.meta.env.VITE_API_BASE || ''
-
-/** The admin's session from /api/auth/login; registered shoppers have none. */
-export function adminSession() {
-  if (localStorage.getItem('scraper_user_role') !== 'admin') return null
-  return localStorage.getItem('scraper_auth_token')
-}
-
-async function api(path, { method = 'GET', body, token } = {}) {
-  const headers = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  if (token) headers['X-Request-Token'] = token
-  const session = adminSession()
-  if (session) headers.Authorization = `Bearer ${session}`
-
-  let response
-  try {
-    response = await fetch(`${apiBase()}/api/support${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  } catch {
-    throw new SupportError('Connection error. Please check your internet and try again.', 0, 'network')
-  }
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    throw new SupportError(
-      data.message || 'Something went wrong. Please try again.',
-      response.status,
-      data.reason
-    )
-  }
-  return data
-}
-
 let configPromise = null
 
-/** What is switched on. Never rejects: with no worker, everything is off. */
+/** What is switched on. Never rejects: with no shop server, everything is off. */
 export function getSupportConfig() {
   if (!configPromise) {
-    configPromise = api('/config').catch(() => ({ tickets: false, widget: null, issues: [] }))
+    configPromise = api('/support/config').catch(() => ({ tickets: false, widget: null, issues: [], topics: [] }))
   }
   return configPromise
 }
@@ -73,31 +33,27 @@ export function newRequestId() {
   return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 }
 
-/** Who is using this browser, as far as the storefront knows. Unverified. */
+/** Who is using this browser, for prefilling forms and the chat. */
 export function currentVisitor() {
-  try {
-    const user = JSON.parse(localStorage.getItem('scraper_current_user') || 'null')
-    if (user && typeof user === 'object') {
-      return { name: String(user.username || ''), email: String(user.email || '') }
-    }
-  } catch {}
-  return { name: '', email: '' }
+  const user = getSession()?.user
+  return { name: user?.name || '', email: user?.email || '' }
 }
 
-// ---- Requests this browser has made ----
+// ---- Requests a guest made in this browser ----
 
 export function savedRequests() {
   try {
     const list = JSON.parse(localStorage.getItem(REQUESTS_KEY) || '[]')
-    return Array.isArray(list) ? list.filter((r) => r && r.reference && r.token) : []
+    return Array.isArray(list) ? list.filter((r) => r && r.reference) : []
   } catch {
     return []
   }
 }
 
 export function saveRequest(entry) {
+  const known = savedRequests().find((r) => r.reference === entry.reference) || {}
   const rest = savedRequests().filter((r) => r.reference !== entry.reference)
-  const next = [{ ...entry, savedAt: new Date().toISOString() }, ...rest].slice(0, MAX_SAVED)
+  const next = [{ ...known, ...entry, savedAt: known.savedAt || new Date().toISOString() }, ...rest].slice(0, MAX_SAVED)
   try {
     localStorage.setItem(REQUESTS_KEY, JSON.stringify(next))
   } catch {}
@@ -115,44 +71,49 @@ export function isRated(reference) {
   return Boolean(savedRequests().find((r) => r.reference.toUpperCase() === wanted)?.rated)
 }
 
-/** The link to a request's page. The token rides in the fragment, which is never sent to a server. */
+/** The link to a request's page. A guest's token rides in the fragment, which is never sent to a server. */
 export function requestLink(reference, token) {
   return `/requests/${encodeURIComponent(reference)}${token ? `#${token}` : ''}`
 }
 
 // ---- Calls ----
 
+const withToken = (token) => (token ? { 'X-Request-Token': token } : {})
+
 export async function createRequest(form) {
-  const made = await api('/tickets', { method: 'POST', body: form })
+  const made = await api('/support/tickets', { method: 'POST', body: form })
   if (made.token) {
     saveRequest({ reference: made.reference, token: made.token, subject: form.subject || form.message })
   }
   return made
 }
 
+/** The signed-in shopper's requests, as the support desk has them. */
+export const myRequests = () => api('/support/requests').then((r) => r.requests)
+
 export const readRequest = (reference, token) =>
-  api(`/requests/${encodeURIComponent(reference)}`, { token })
+  api(`/support/requests/${encodeURIComponent(reference)}`, { headers: withToken(token) })
 
 export const requestChanges = (reference, token) =>
-  api(`/requests/${encodeURIComponent(reference)}/changes`, { token })
+  api(`/support/requests/${encodeURIComponent(reference)}/changes`, { headers: withToken(token) })
 
 export const replyToRequest = (reference, token, message, requestId) =>
-  api(`/requests/${encodeURIComponent(reference)}/messages`, {
+  api(`/support/requests/${encodeURIComponent(reference)}/messages`, {
     method: 'POST',
-    token,
+    headers: withToken(token),
     body: { message, requestId },
   })
 
 export const rateRequest = (reference, token, rating, comment) =>
-  api(`/requests/${encodeURIComponent(reference)}/rating`, {
+  api(`/support/requests/${encodeURIComponent(reference)}/rating`, {
     method: 'POST',
-    token,
+    headers: withToken(token),
     body: { rating, comment },
   })
 
-export const adminOverview = () => api('/admin/overview')
+export const adminOverview = () => api('/support/admin/overview')
 
-export const chatIdentity = () => api('/identity')
+export const chatIdentity = () => api('/support/identity')
 
 // ---- What the visitor is looking at, for the chat widget ----
 
@@ -173,13 +134,12 @@ export function onSupportContext(listener) {
   return () => listeners.delete(listener)
 }
 
-/** The few facts about a listing worth telling support. */
+/** The few facts about a product worth telling support. */
 export function productContext(product) {
   if (!product) return {}
   const context = {
     product_id: product.id,
     title: product.title,
-    source: product.source,
     price_current: product.price_current,
   }
   return Object.fromEntries(Object.entries(context).filter(([, value]) => value != null))
@@ -190,4 +150,11 @@ export function formatWhen(iso) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+export function formatDay(iso) {
+  if (!iso) return ''
+  const date = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }

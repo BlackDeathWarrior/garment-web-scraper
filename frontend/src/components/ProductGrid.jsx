@@ -37,13 +37,7 @@ export default function ProductGrid({ products, loading, error, onProductClick }
           <p className="text-5xl mb-4">!</p>
           <p className="text-gray-700 font-medium">Could not load products</p>
           <p className="text-gray-500 text-sm mt-1">{error}</p>
-          <p className="text-gray-500 text-xs mt-3">
-            Run{' '}
-            <code className="bg-gray-100 px-1.5 py-0.5 rounded text-maroon-700 font-mono">
-              ./start_scraper.ps1
-            </code>{' '}
-            to keep data fresh in the background.
-          </p>
+          <p className="text-gray-500 text-xs mt-3">Please reload the page in a moment.</p>
         </div>
       </div>
     )

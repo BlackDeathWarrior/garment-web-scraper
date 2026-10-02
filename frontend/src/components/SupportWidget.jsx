@@ -1,19 +1,12 @@
-import { useEffect, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
-import {
-  adminSession,
-  chatIdentity,
-  currentVisitor,
-  getSupportConfig,
-  getSupportContext,
-  onSupportContext,
-} from '../lib/support'
+import { useEffect } from 'react'
+import { useUser } from '../lib/auth'
+import { chatIdentity, getSupportConfig, getSupportContext, onSupportContext } from '../lib/support'
 
 const THEME = { primary: '#8B1A1A', onPrimary: '#ffffff', radius: 16, position: 'right' }
 const STRINGS = {
   launcher: 'Chat with us',
   title: 'Ethnic Threads support',
-  intro: 'Ask about a listing, a price or the site. We usually reply in a few minutes.',
+  intro: 'Ask about an order, a product or the site. Sign in and we can look up your orders for you.',
 }
 
 function loadScript(src) {
@@ -31,22 +24,17 @@ function loadScript(src) {
   })
 }
 
-/** Who is using this browser, as one string: when it changes, the chat starts again as them. */
-function whoIsHere() {
-  const visitor = currentVisitor()
-  return [adminSession() ? 'admin' : 'visitor', visitor.name, visitor.email].join('|')
-}
-
 /**
- * The support desk's chat widget, in the storefront's colours. It is told
- * which listing the visitor has open, and the signed-in admin is vouched for
- * by a token the worker signs. Renders nothing itself; with no support desk
+ * The support desk's chat widget, in the shop's colours. It is told what the
+ * visitor is looking at (a product, an order), and a signed-in shopper is
+ * vouched for by a token the shop's server signs, so support knows whose
+ * orders it may talk about. Renders nothing itself; with no support desk
  * configured it does nothing.
  */
 export default function SupportWidget() {
-  // Registering, signing in and logging out happen without a page load.
-  const location = useLocation()
-  const who = useMemo(() => whoIsHere(), [location.key])
+  const user = useUser()
+  // Signing in or out starts the chat again as that person.
+  const who = user ? `${user.role}:${user.id}` : 'guest'
 
   useEffect(() => {
     let chat = null
@@ -64,18 +52,15 @@ export default function SupportWidget() {
       if (cancelled || !window.TMSChat) return
 
       let identityToken
-      if (adminSession()) {
-        identityToken = (await chatIdentity().catch(() => ({}))).token || undefined
-      }
+      if (user) identityToken = (await chatIdentity().catch(() => ({}))).token || undefined
       if (cancelled) return
 
-      const visitor = currentVisitor()
       chat = window.TMSChat.init({
         server: config.widget.server,
         integration: config.widget.integration,
         theme: THEME,
         strings: STRINGS,
-        visitor: visitor.name || visitor.email ? visitor : undefined,
+        visitor: user ? { name: user.name, email: user.email || undefined } : undefined,
         context: getSupportContext(),
         identityToken,
       })
@@ -88,6 +73,7 @@ export default function SupportWidget() {
       stopListening()
       chat?.destroy()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [who])
 
   return null
