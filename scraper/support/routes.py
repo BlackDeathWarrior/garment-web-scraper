@@ -541,3 +541,17 @@ def handle(req: Request, worker: Any) -> Optional[Response]:
             return _overview(req)
 
     return _fail(404, "not-found", "There is nothing at this address.")
+
+
+# ---- Shared with the shop's support routes (shop/support.py) ----
+
+fail = _fail
+from_desk = _from_desk
+text = _text
+desk_config = _config
+tickets_client = _tickets_client
+tracking_secret = _tracking_secret
+request_view = _request_view
+webhook = _webhook
+overview = _overview
+tool_allowed = _tool_allowed
