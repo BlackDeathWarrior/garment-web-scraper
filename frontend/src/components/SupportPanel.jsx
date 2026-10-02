@@ -120,10 +120,10 @@ export default function SupportPanel() {
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div aria-label="Latest requests">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Latest requests</h3>
+        <div aria-label="Latest tickets">
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Latest tickets</h3>
           {tickets.length === 0 ? (
-            <p className="text-sm text-gray-500">{overview.ticketsError || 'No requests yet.'}</p>
+            <p className="text-sm text-gray-500">{overview.ticketsError || 'No tickets yet.'}</p>
           ) : (
             <ul className="divide-y divide-gray-100">
               {tickets.map((ticket) => (

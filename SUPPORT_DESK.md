@@ -37,7 +37,7 @@ Put these in `.env` at the repository root (see `frontend/.env.example`). Each f
 | --- | --- | --- |
 | `GET /api/support/config` | Storefront | Public; returns no secrets |
 | `POST /api/support/tickets` | Storefront | Per-visitor limit |
-| `GET /api/support/requests/{ref}`, `…/changes`, `POST …/messages`, `POST …/rating` | Storefront | The request's tracking token (`X-Request-Token`), or the admin's session |
+| `GET /api/support/requests/{ref}`, `…/changes`, `POST …/messages`, `POST …/rating` | Storefront | The request's tracking token (`X-Request-Token`). The admin's session may read any request, but not reply or rate |
 | `POST /api/support/webhook` | Support desk | `X-TMS-Signature` (HMAC-SHA256), replays refused, duplicates stored once |
 | `GET /api/support/tools/scrape-status`, `log-tail`, `catalog-status`, `products`, `products/{id}`; `POST /api/support/tools/rescrape` | Support desk's AI | `Authorization: Bearer <SUPPORT_TOOL_TOKEN>` |
 | `GET /api/support/admin/overview`, `GET /api/support/identity` | Storefront, admin only | The session token from `/api/auth/login` |

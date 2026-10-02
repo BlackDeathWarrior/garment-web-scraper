@@ -245,14 +245,18 @@ def _create_ticket(req: Request) -> Response:
     }
 
 
-def _owned(req: Request, reference: str) -> Optional[Response]:
-    """None when the caller may read this request; otherwise the refusal."""
+def _owned(req: Request, reference: str, write: bool = False) -> Optional[Response]:
+    """None when the caller may read (or, with `write`, answer) this request; otherwise the refusal.
+
+    The admin may read any request. Writing on it (a reply, a rating) is the
+    shopper's alone: it is said in their name.
+    """
     settings = config.load()
     if not settings.tickets_enabled:
         return _fail(503, "support-not-configured", "Support requests are not set up on this site.")
     if not _REFERENCE.match(reference):
         return _fail(404, "not-found", "That request was not found.")
-    if req.admin:
+    if req.admin and not write:
         return None
     if not tokens.verify_tracking(_tracking_secret(settings), reference, req.headers.get(TOKEN_HEADER)):
         # The same answer as for a reference that does not exist.
@@ -313,7 +317,7 @@ def _request_changes(req: Request, reference: str) -> Response:
 
 
 def _reply(req: Request, reference: str) -> Response:
-    refusal = _owned(req, reference)
+    refusal = _owned(req, reference, write=True)
     if refusal:
         return refusal
     data = req.json()
@@ -333,7 +337,7 @@ def _reply(req: Request, reference: str) -> Response:
 
 
 def _rate(req: Request, reference: str) -> Response:
-    refusal = _owned(req, reference)
+    refusal = _owned(req, reference, write=True)
     if refusal:
         return refusal
     data = req.json()

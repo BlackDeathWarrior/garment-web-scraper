@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   adminSession,
   chatIdentity,
@@ -30,6 +31,12 @@ function loadScript(src) {
   })
 }
 
+/** Who is using this browser, as one string: when it changes, the chat starts again as them. */
+function whoIsHere() {
+  const visitor = currentVisitor()
+  return [adminSession() ? 'admin' : 'visitor', visitor.name, visitor.email].join('|')
+}
+
 /**
  * The support desk's chat widget, in the storefront's colours. It is told
  * which listing the visitor has open, and the signed-in admin is vouched for
@@ -37,6 +44,10 @@ function loadScript(src) {
  * configured it does nothing.
  */
 export default function SupportWidget() {
+  // Registering, signing in and logging out happen without a page load.
+  const location = useLocation()
+  const who = useMemo(() => whoIsHere(), [location.key])
+
   useEffect(() => {
     let chat = null
     let stopListening = () => {}
@@ -77,7 +88,7 @@ export default function SupportWidget() {
       stopListening()
       chat?.destroy()
     }
-  }, [])
+  }, [who])
 
   return null
 }

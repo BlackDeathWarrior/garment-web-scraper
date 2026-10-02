@@ -109,6 +109,12 @@ export function tokenFor(reference) {
   return savedRequests().find((r) => r.reference.toUpperCase() === wanted)?.token || null
 }
 
+/** Whether this browser has already rated a request. */
+export function isRated(reference) {
+  const wanted = String(reference).toUpperCase()
+  return Boolean(savedRequests().find((r) => r.reference.toUpperCase() === wanted)?.rated)
+}
+
 /** The link to a request's page. The token rides in the fragment, which is never sent to a server. */
 export function requestLink(reference, token) {
   return `/requests/${encodeURIComponent(reference)}${token ? `#${token}` : ''}`

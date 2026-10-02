@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import {
   adminSession,
   formatWhen,
+  isRated,
   newRequestId,
   rateRequest,
   readRequest,
@@ -95,7 +96,9 @@ function RequestDetail({ reference }) {
       version.current = found.version
       setRequest(found)
       setError('')
-      if (token) saveRequest({ reference: found.reference, token, subject: found.subject })
+      if (token) {
+        saveRequest({ reference: found.reference, token, subject: found.subject, rated: isRated(reference) })
+      }
     } catch (err) {
       setError(
         err.status === 404
@@ -158,8 +161,17 @@ function RequestDetail({ reference }) {
             ))}
           </ol>
 
-          {request.state === 'resolved' && <Rating reference={reference} token={token} />}
-          {request.state !== 'closed' && <Reply reference={reference} token={token} onSent={load} />}
+          {!token && (
+            <p className="text-sm text-gray-500 bg-white rounded-2xl border border-gray-100 px-4 py-3">
+              You are reading this as the site admin. Replies and ratings are the shopper's own.
+            </p>
+          )}
+          {token && request.state === 'resolved' && !isRated(reference) && (
+            <Rating reference={reference} token={token} subject={request.subject} />
+          )}
+          {token && request.state !== 'closed' && (
+            <Reply reference={reference} token={token} onSent={load} />
+          )}
         </>
       )}
     </div>
@@ -233,7 +245,7 @@ function Reply({ reference, token, onSent }) {
   )
 }
 
-function Rating({ reference, token }) {
+function Rating({ reference, token, subject }) {
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
   const [state, setState] = useState('ask')
@@ -245,6 +257,8 @@ function Rating({ reference, token }) {
     setError('')
     try {
       await rateRequest(reference, token, rating, comment.trim() || undefined)
+      // Remembered here, so the question is not asked again on the next visit.
+      saveRequest({ reference, token, subject, rated: true })
       setState('done')
     } catch (err) {
       setError(err.message)

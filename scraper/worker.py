@@ -453,6 +453,15 @@ class WorkerRequestHandler(BaseHTTPRequestHandler):
             return False
         length = int(self.headers.get("Content-Length") or 0)
         if length > support_routes.MAX_BODY_BYTES:
+            # Take what is being sent (within reason) and drop it: a caller that is
+            # cut off mid-upload never gets to read why it was refused.
+            remaining = min(length, 8 * 1024 * 1024)
+            while remaining > 0:
+                chunk = self.rfile.read(min(65536, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+            self.close_connection = True
             self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"ok": False, "reason": "too-large"})
             return True
         request = support_routes.Request(

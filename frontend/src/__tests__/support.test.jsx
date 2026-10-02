@@ -5,6 +5,7 @@ import Contact from '../pages/Contact'
 import RequestStatus from '../pages/RequestStatus'
 import ReportListing from '../components/ReportListing'
 import SupportPanel from '../components/SupportPanel'
+import SupportWidget from '../components/SupportWidget'
 import {
   createRequest,
   getSupportConfig,
@@ -12,6 +13,7 @@ import {
   requestLink,
   resetSupportConfig,
   savedRequests,
+  setSupportContext,
   tokenFor,
 } from '../lib/support'
 
@@ -243,6 +245,68 @@ describe('SupportPanel', () => {
     stubFetch({ 'GET /api/support/admin/overview': { status: 401, body: { message: 'Sign in as the admin to see this.' } } })
     render(<MemoryRouter><SupportPanel /></MemoryRouter>)
     expect(await screen.findByText('Sign in again to see the support desk.')).toBeInTheDocument()
+  })
+})
+
+describe('SupportWidget', () => {
+  const widget = {
+    script: 'http://desk.test/widget/tms-chat.js',
+    server: 'http://desk.test',
+    integration: 'ethnic-threads',
+  }
+  let chat
+
+  beforeEach(() => {
+    chat = { setContext: vi.fn(), destroy: vi.fn() }
+    // The desk's script is already on the page, so nothing is fetched from it here.
+    window.TMSChat = { init: vi.fn(() => chat) }
+  })
+
+  afterEach(() => {
+    delete window.TMSChat
+  })
+
+  it('starts the chat in the site colours, as the visitor, and follows the open listing', async () => {
+    localStorage.setItem('scraper_current_user', JSON.stringify({ username: 'asha', email: 'asha@shopper.example' }))
+    stubFetch({ 'GET /api/support/config': { body: { ok: true, tickets: true, widget, issues: [] } } })
+    const { unmount } = render(<MemoryRouter><SupportWidget /></MemoryRouter>)
+    await waitFor(() => expect(window.TMSChat.init).toHaveBeenCalledTimes(1))
+    expect(window.TMSChat.init.mock.calls[0][0]).toMatchObject({
+      server: 'http://desk.test',
+      integration: 'ethnic-threads',
+      theme: { primary: '#8B1A1A' },
+      strings: { title: 'Ethnic Threads support' },
+      visitor: { name: 'asha', email: 'asha@shopper.example' },
+      identityToken: undefined,
+    })
+
+    setSupportContext({ product_id: 'k1', title: 'Kurta' })
+    expect(chat.setContext).toHaveBeenCalledWith({ product_id: 'k1', title: 'Kurta' })
+
+    unmount()
+    expect(chat.destroy).toHaveBeenCalled()
+    setSupportContext({})
+  })
+
+  it('vouches for the signed-in admin with a token the worker signed', async () => {
+    localStorage.setItem('scraper_user_role', 'admin')
+    localStorage.setItem('scraper_auth_token', 'v1.123.sig')
+    const calls = stubFetch({
+      'GET /api/support/config': { body: { ok: true, tickets: true, widget, issues: [] } },
+      'GET /api/support/identity': { body: { ok: true, token: 'signed.identity.token' } },
+    })
+    render(<MemoryRouter><SupportWidget /></MemoryRouter>)
+    await waitFor(() => expect(window.TMSChat.init).toHaveBeenCalledTimes(1))
+    expect(window.TMSChat.init.mock.calls[0][0].identityToken).toBe('signed.identity.token')
+    expect(calls.find((c) => c.url.endsWith('/identity')).headers.Authorization).toBe('Bearer v1.123.sig')
+  })
+
+  it('does nothing when no support desk is set up', async () => {
+    stubFetch({ 'GET /api/support/config': deskOff })
+    render(<MemoryRouter><SupportWidget /></MemoryRouter>)
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    await Promise.resolve()
+    expect(window.TMSChat.init).not.toHaveBeenCalled()
   })
 })
 

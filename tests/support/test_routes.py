@@ -429,6 +429,11 @@ def test_the_admin_is_a_known_customer_and_gets_a_chat_identity(desk):
     desk.answer("GET /api/v1/integration/tickets/TMS-41/messages", 200, MESSAGES)
     desk.answer("GET /api/v1/integration/tickets/TMS-41", 200, TICKET)
     assert call("GET", "/api/support/requests/TMS-41", admin="scraper_admin")[0] == 200
+    # Reading only: a reply or a rating is said in the shopper's name, so it needs their token.
+    reply = {"message": "Speaking for the shopper", "requestId": "reply-0009-abcd"}
+    assert call("POST", "/api/support/requests/TMS-41/messages", reply, admin="scraper_admin")[0] == 404
+    assert call("POST", "/api/support/requests/TMS-41/rating", {"rating": 5}, admin="scraper_admin")[0] == 404
+    assert desk.calls("POST", "/tickets/TMS-41/") == []
 
 
 def test_session_tokens_expire_and_cannot_be_forged():
