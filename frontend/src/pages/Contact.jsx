@@ -1,23 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FiMail, FiMessageSquare, FiSend, FiCheckCircle, FiShield, FiUser } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
+import {
+  createRequest,
+  currentVisitor,
+  getSupportConfig,
+  newRequestId,
+  requestLink,
+} from '../lib/support'
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [supportDesk, setSupportDesk] = useState(false)
+  const [receipt, setReceipt] = useState(null)
+  const [error, setError] = useState('')
+  // One id per message: sending the same one twice creates one request.
+  const requestId = useRef(newRequestId())
+  const visitor = currentVisitor()
+
+  useEffect(() => {
+    let active = true
+    getSupportConfig().then((config) => {
+      if (active) setSupportDesk(Boolean(config.tickets))
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    
-    const form = e.target
+    setError('')
+
+    const fields = new FormData(e.target)
     const data = {
-      name: form.name.value,
-      email: form.email.value,
-      subject: form.subject.value,
-      message: form.message.value
+      name: fields.get('name'),
+      email: fields.get('email'),
+      subject: fields.get('subject'),
+      message: fields.get('message')
     }
-    
+
+    if (supportDesk) {
+      try {
+        const made = await createRequest({ ...data, kind: 'contact', requestId: requestId.current })
+        requestId.current = newRequestId()
+        setReceipt(made)
+        setSubmitted(true)
+      } catch (err) {
+        setError(err.message || 'Failed to send message. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
     try {
       const response = await fetch("https://formspree.io/f/xvzdraja", {
         method: "POST",
@@ -53,8 +92,22 @@ export default function Contact() {
           <p className="text-gray-600 mb-8">
             Thank you for helping us improve Ethnic Threads. We'll get back to you shortly.
           </p>
-          <button 
-            onClick={() => setSubmitted(false)}
+          {receipt?.reference && (
+            <div className="mb-8 flex justify-center">
+              <div className="bg-white border border-gray-200 rounded-2xl px-6 py-4 text-left">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your reference</p>
+                <p className="text-xl font-bold text-gray-900" data-testid="request-reference">{receipt.reference}</p>
+                <Link
+                  to={requestLink(receipt.reference, receipt.token)}
+                  className="text-sm font-bold text-maroon-700 hover:underline"
+                >
+                  Follow this request
+                </Link>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => { setSubmitted(false); setReceipt(null) }}
             className="bg-maroon-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-maroon-800 transition-all"
           >
             Send Another Message
@@ -98,12 +151,17 @@ export default function Contact() {
           </div>
 
           <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-xl shadow-maroon-900/5 border border-gray-100 space-y-6">
+            {error && (
+              <div role="alert" className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700 text-sm">
+                {error}
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Name</label>
                 <div className="relative">
                   <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" name="name" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="John Doe" />
+                  <input type="text" name="name" required defaultValue={visitor.name} className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="John Doe" />
                 </div>
               </div>
 
@@ -111,7 +169,7 @@ export default function Contact() {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
                 <div className="relative">
                   <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="email" name="email" required className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="john@example.com" />
+                  <input type="email" name="email" required defaultValue={visitor.email} className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-maroon-500 outline-none bg-gray-50 text-sm" placeholder="john@example.com" />
                 </div>
               </div>
             </div>

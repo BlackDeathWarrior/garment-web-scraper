@@ -44,6 +44,10 @@ export default function Register() {
       
       localStorage.setItem('scraper_auth_token', 'user_session_active')
       localStorage.setItem('scraper_user_role', 'user')
+      localStorage.setItem(
+        'scraper_current_user',
+        JSON.stringify({ username: formData.username, email: formData.email })
+      )
       navigate('/')
     } catch (err) {
       setError(err.message || 'Registration failed')

@@ -7,6 +7,8 @@ import ProductGrid from '../components/ProductGrid'
 import Pagination from '../components/Pagination'
 import ScraperLog from '../components/ScraperLog'
 import ProductModal from '../components/ProductModal'
+import SupportPanel from '../components/SupportPanel'
+import { productContext, setSupportContext } from '../lib/support'
 import {
   DEFAULT_FILTERS,
   filterProducts,
@@ -162,6 +164,12 @@ export default function Home() {
   useEffect(() => {
     setPage(1)
   }, [search, filters, perPage])
+
+  // The chat widget tells support which listing the visitor has open.
+  useEffect(() => {
+    setSupportContext({ page: 'catalogue', ...productContext(selectedProduct) })
+    return () => setSupportContext({})
+  }, [selectedProduct])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -377,6 +385,12 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {isAdmin && (
+        <div className="max-w-screen-xl mx-auto px-4 pb-6">
+          <SupportPanel />
+        </div>
+      )}
 
       {isAdmin && <ScraperLog onRunScrape={() => requestScrapeCycle('manual')} />}
 

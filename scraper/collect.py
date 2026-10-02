@@ -17,6 +17,7 @@ from urllib.parse import urlsplit, urlunsplit
 from decimal import Decimal
 
 from scraper import log
+from scraper.support import incidents
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS_DIR = ROOT / "outputs"
@@ -72,17 +73,38 @@ async def run(
 
             try:
                 raw = await parser.scrape(max_products=max_products, on_progress=_progress)
+                key = name.lower()
                 if raw:
                     log.success(name, f"Finished! Yielded {len(raw)} raw products")
                     source_results[name] = raw
+                    await asyncio.to_thread(_source_recovered, key)
                 else:
                     log.warn(name, "Finished with 0 products found")
+                    await asyncio.to_thread(
+                        incidents.report,
+                        f"scraper.zero_products:{key}",
+                        f"{name} scrape found no products",
+                        severity="warning",
+                        source=f"scraper/{key}",
+                        message=(
+                            "The scrape finished without an error but returned nothing. "
+                            "The store may have changed its pages or blocked the scraper."
+                        ),
+                    )
                 
                 if on_partial:
                     all_raw = [item for sublist in source_results.values() for item in sublist]
                     on_partial(normalize(all_raw), name)
             except Exception as exc:
                 log.error(name, f"Fatal error during scrape: {exc}")
+                await asyncio.to_thread(
+                    incidents.report,
+                    f"scraper.source_failed:{name.lower()}",
+                    f"{name} scrape failed",
+                    severity="error",
+                    source=f"scraper/{name.lower()}",
+                    message=str(exc),
+                )
 
     # START ALL SOURCES (Semaphore will queue them safely)
     await asyncio.gather(*(scrape_source(p) for p in parsers))
@@ -91,6 +113,14 @@ async def run(
     normalized = normalize(all_raw_final)
     log.info("collect", f"Parallel run complete: {len(all_raw_final)} raw -> {len(normalized)} normalized")
     return normalized
+
+
+def _source_recovered(key: str) -> None:
+    """A store gave us products again: whatever was reported about it is over."""
+    incidents.recovered(f"scraper.zero_products:{key}")
+    incidents.recovered(f"scraper.source_failed:{key}")
+    if key == "amazon":
+        incidents.recovered("scraper.captcha:amazon")
 
 
 def _dedup_key(item: dict) -> str | None:
@@ -273,7 +303,20 @@ def save_output(products: list[dict]) -> Path:
         s3 = boto3.client('s3', region_name='ap-south-1')
         s3.upload_file(str(OUTPUT_FILE), bucket_name, "products.json", ExtraArgs={'ContentType': 'application/json', 'CacheControl': 'no-cache, no-store, must-revalidate'})
         log.success("aws", "S3 sync complete - Live Website updated")
-    except Exception as e: log.error("aws", f"S3 sync failed: {e}")
+        incidents.recovered("scraper.s3_sync_failed")
+    except ImportError as e:
+        # boto3 is not installed: this machine does not publish to S3.
+        log.error("aws", f"S3 sync failed: {e}")
+    except Exception as e:
+        log.error("aws", f"S3 sync failed: {e}")
+        incidents.report(
+            "scraper.s3_sync_failed",
+            "Catalogue upload to S3 failed",
+            severity="warning",
+            source="scraper/s3",
+            message=str(e),
+            details={"bucket": bucket_name, "products": len(products)},
+        )
     return OUTPUT_FILE
 
 
@@ -299,6 +342,14 @@ def run_watch_loop(max_products: int, sources: list[str], append_existing: bool,
         free_pct = free / total
         if free_pct < 0.05:
             log.error("watch", f"DISK SPACE CRITICAL: {free_pct:.1%} free. Stopping indefinitely.")
+            incidents.report(
+                "scraper.disk_critical",
+                "Scraper stopped: disk almost full",
+                severity="critical",
+                source="scraper/watch",
+                message=f"{free_pct:.1%} of the disk is free. The scraper stops until space is freed and it is started again.",
+                details={"free_bytes": free, "total_bytes": total},
+            )
             break
 
         run_no += 1
@@ -315,12 +366,31 @@ def run_watch_loop(max_products: int, sources: list[str], append_existing: bool,
                 failure_streak = 0
                 wait = int(base_wait * random.uniform(0.9, 1.1))
                 log.cycle_end(run_no, len(out), str(OUTPUT_FILE.name), wait)
+                incidents.recovered("scraper.cycle_failed", f"Cycle #{run_no} scraped {len(products)} products.")
+                # A cycle that produced products also ends an earlier failed run.
+                incidents.recovered("scraper.run_failed", "A scrape cycle finished successfully.")
             else:
                 failure_streak = min(failure_streak + 1, 4)
                 log.warn("watch", f"Cycle #{run_no} scraped 0 products")
+                incidents.report(
+                    "scraper.cycle_failed",
+                    "Scrape cycle produced no products",
+                    severity="error",
+                    source="scraper/watch",
+                    message=f"Cycle #{run_no} finished with 0 products from {', '.join(sources)}.",
+                    details={"cycle": run_no, "failure_streak": failure_streak},
+                )
         except Exception as exc:
             failure_streak = min(failure_streak + 1, 4)
             log.error("watch", f"Cycle #{run_no} failed: {exc}")
+            incidents.report(
+                "scraper.cycle_failed",
+                "Scrape cycle failed",
+                severity="error",
+                source="scraper/watch",
+                message=str(exc),
+                details={"cycle": run_no, "failure_streak": failure_streak},
+            )
         if max_runs and run_no >= max_runs: break
         manual_request = _consume_manual_trigger_request()
         if manual_request: continue
@@ -352,7 +422,14 @@ def main():
     sources = [s.strip().lower() for s in args.sources.split(",")]
     valid = {"flipkart", "myntra", "amazon"}
     sources = [s for s in sources if s in valid]
-    if not sources: sys.exit(1)
+    if not sources:
+        # Said out loud: the worker reports a failed run with the end of this output.
+        print(
+            f"No valid sources in '{args.sources}'. Choose from: {', '.join(sorted(valid))}",
+            file=sys.stderr,
+            flush=True,
+        )
+        sys.exit(1)
     conf_log = os.environ.get("SCRAPER_LOG_FILE")
     append_log = os.environ.get("SCRAPER_LOG_APPEND") == "1"
     if conf_log: log.configure(log_file=conf_log, append=append_log)

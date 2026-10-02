@@ -57,6 +57,7 @@ npm run dev
 ## 📖 Documentation
 - [AWS Deployment Guide](AWS_Plan.md): Step-by-step for absolute beginners.
 - [Architecture Migration](Implementation.md): Technical roadmap and scaling strategy.
+- [Support Desk Integration](SUPPORT_DESK.md): Tickets, chat, incident reports and webhooks (optional).
 
 ---
 

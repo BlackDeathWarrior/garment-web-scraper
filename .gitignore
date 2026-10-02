@@ -9,3 +9,6 @@ outputs/products.json
 *.log
 .env
 browser_traces/
+
+# Webhook events received from the support desk
+outputs/support/

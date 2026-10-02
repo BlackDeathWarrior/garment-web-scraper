@@ -1,4 +1,5 @@
 import { FiX, FiShoppingBag, FiInfo, FiTag, FiTruck, FiStar, FiShield } from 'react-icons/fi'
+import ReportListing from './ReportListing'
 
 const RUPEE = '\u20B9'
 
@@ -116,6 +117,8 @@ export default function ProductModal({ product, onClose }) {
                 ))}
               </div>
             )}
+
+            <ReportListing product={product} />
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FiSearch, FiSliders, FiMessageSquare, FiX } from 'react-icons/fi'
+import { FiSearch, FiSliders, FiMessageSquare, FiX, FiInbox } from 'react-icons/fi'
 
 export default function Navbar({ search, onSearch, productCount, onMenuToggle }) {
   return (
@@ -50,6 +50,13 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
           >
             <FiMessageSquare size={16} />
             <span className="hidden md:inline">Write to Us</span>
+          </Link>
+          <Link
+            to="/requests"
+            className="text-white hover:text-gold-400 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-colors mr-2"
+          >
+            <FiInbox size={16} />
+            <span className="hidden md:inline">My Requests</span>
           </Link>
           {productCount !== undefined && productCount !== null && (
             <span className="text-white text-sm hidden sm:block font-semibold">

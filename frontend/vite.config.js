@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: scraperWorkerUrl,
           changeOrigin: true,
+          // Adds X-Forwarded-For, so the worker's per-visitor limits see the visitor.
+          xfwd: true,
         },
         '/scraper.log': {
           target: scraperWorkerUrl,

@@ -7,6 +7,7 @@ from playwright.async_api import async_playwright, Page
 
 from .base import BaseParser, RawProduct
 from scraper import log
+from scraper.support import incidents
 
 
 BASE_URL = "https://www.amazon.in"
@@ -207,6 +208,14 @@ class AmazonParser(BaseParser):
         body_text = await page.evaluate("document.body.innerText")
         if "captcha" in body_text.lower() or "Enter the characters" in body_text:
             log.warn("Amazon", f"CAPTCHA detected for '{query}' - skipping, waiting 15s")
+            await asyncio.to_thread(
+                incidents.report,
+                "scraper.captcha:amazon",
+                "Amazon is showing a CAPTCHA to the scraper",
+                severity="warning",
+                source="scraper/amazon",
+                message=f"The search for '{query}' was skipped. Amazon listings will go out of date while this lasts.",
+            )
             await asyncio.sleep(15)
             return []
 
