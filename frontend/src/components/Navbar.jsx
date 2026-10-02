@@ -18,7 +18,8 @@ export default function Navbar({ search, onSearch, onMenuToggle }) {
 
   return (
     <header className="sticky top-0 z-40 bg-maroon-800 shadow-lg border-b border-maroon-900/50">
-      <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center gap-2 sm:gap-4">
+      {/* On a phone the search box takes a row of its own, under the name and the links. */}
+      <div className="max-w-screen-xl mx-auto px-4 py-3 flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 sm:gap-4">
         <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
           <span className="text-gold-400 text-2xl leading-none select-none group-hover:scale-110 transition-transform">*</span>
           <div>
@@ -30,7 +31,7 @@ export default function Navbar({ search, onSearch, onMenuToggle }) {
         </Link>
 
         {onSearch ? (
-          <div className="flex-1 min-w-0 relative max-w-xl mx-auto">
+          <div className="order-last basis-full sm:order-none sm:basis-0 sm:flex-1 min-w-0 relative max-w-xl mx-auto">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" size={16} />
             <input
               type="text"
@@ -54,10 +55,10 @@ export default function Navbar({ search, onSearch, onMenuToggle }) {
             )}
           </div>
         ) : (
-          <div className="flex-1" />
+          <div className="hidden sm:block flex-1" />
         )}
 
-        <nav className="flex items-center gap-3 sm:gap-4 flex-shrink-0" aria-label="Account">
+        <nav className="ml-auto flex items-center gap-3 sm:gap-4 flex-shrink-0" aria-label="Account">
           {isAdmin(user) && (
             <Link to="/admin" className={link}>
               <FiSettings size={16} />
