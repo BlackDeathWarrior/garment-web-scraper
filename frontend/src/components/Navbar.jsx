@@ -4,7 +4,7 @@ import { FiSearch, FiSliders, FiMessageSquare, FiX, FiInbox } from 'react-icons/
 export default function Navbar({ search, onSearch, productCount, onMenuToggle }) {
   return (
     <header className="sticky top-0 z-40 bg-maroon-800 shadow-lg border-b border-maroon-900/50">
-      <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center gap-4">
+      <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center gap-2 sm:gap-4">
         <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
           <span className="text-gold-400 text-2xl leading-none select-none group-hover:scale-110 transition-transform">*</span>
           <div>
@@ -17,7 +17,7 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
           </div>
         </Link>
 
-        <div className="flex-1 relative max-w-xl mx-auto">
+        <div className="flex-1 min-w-0 relative max-w-xl mx-auto">
           <FiSearch
             className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"
             size={16}
@@ -43,17 +43,17 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
           )}
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Link 
             to="/contact" 
-            className="text-white hover:text-gold-400 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-colors mr-2"
+            className="text-white hover:text-gold-400 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-colors sm:mr-2"
           >
             <FiMessageSquare size={16} />
             <span className="hidden md:inline">Write to Us</span>
           </Link>
           <Link
             to="/requests"
-            className="text-white hover:text-gold-400 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-colors mr-2"
+            className="text-white hover:text-gold-400 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest transition-colors sm:mr-2"
           >
             <FiInbox size={16} />
             <span className="hidden md:inline">My Requests</span>
@@ -63,15 +63,17 @@ export default function Navbar({ search, onSearch, productCount, onMenuToggle })
               {productCount.toLocaleString()} items
             </span>
           )}
-          <button
-            onClick={onMenuToggle}
-            aria-label="Toggle filters"
-            className="lg:hidden flex items-center gap-1.5 bg-white/20 hover:bg-white/30
-                       text-white text-sm px-3 py-1.5 rounded-full transition-colors font-medium"
-          >
-            <FiSliders size={14} />
-            <span>Filters</span>
-          </button>
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              aria-label="Toggle filters"
+              className="lg:hidden flex items-center gap-1.5 bg-white/20 hover:bg-white/30
+                         text-white text-sm px-3 py-1.5 rounded-full transition-colors font-medium"
+            >
+              <FiSliders size={14} />
+              <span className="hidden sm:inline">Filters</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
