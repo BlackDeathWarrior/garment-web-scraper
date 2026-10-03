@@ -86,6 +86,18 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- A checkout whose payment did not go through: no order exists, so support
+-- would otherwise have nothing to look at. Nothing is charged, and no payment
+-- detail is kept: only the method and the amount that was due.
+CREATE TABLE IF NOT EXISTS payment_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  method TEXT NOT NULL,
+  amount REAL NOT NULL,
+  failed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS payment_attempts_user_idx ON payment_attempts(user_id, failed_at);
 """
 
 _init_lock = threading.Lock()

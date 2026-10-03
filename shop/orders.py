@@ -571,6 +571,66 @@ def recent_for_email(email: str, limit: int = 5) -> List[Dict[str, Any]]:
         return [_view(conn, row) for row in rows]
 
 
+def record_failed_payment(user_id: str, payload: Dict[str, Any]) -> None:
+    """Keeps a failed checkout for support: the method and the amount, never a payment detail."""
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        option = payload.get("delivery") if payload.get("delivery") in DELIVERY else "standard"
+        subtotal = round(sum(l["price"] * l["quantity"] for l in _lines(payload.get("items"))), 2)
+        amount = round(subtotal + shipping_fee(option, subtotal), 2)
+    except OrderError:
+        amount = 0.0
+    with db.write() as conn:
+        conn.execute(
+            "INSERT INTO payment_attempts(user_id, method, amount, failed_at) VALUES(?,?,?,?)",
+            (user_id, str(payload.get("payment") or "")[:20], amount, db.iso()),
+        )
+
+
+def payments_for_email(email: str, limit: int = 10) -> Dict[str, Any]:
+    """What support may tell a shopper about their payments: failed checkouts, and how their orders were paid."""
+    with db.read() as conn:
+        user = conn.execute("SELECT id FROM users WHERE email = ?", (str(email or "").strip().lower(),)).fetchone()
+        if user is None:
+            return {"failed_payments": [], "orders": [], "note": "No account has this email address."}
+        failed = conn.execute(
+            "SELECT method, amount, failed_at FROM payment_attempts WHERE user_id = ? ORDER BY failed_at DESC LIMIT ?",
+            (user["id"], limit),
+        ).fetchall()
+        rows = conn.execute(
+            "SELECT * FROM orders WHERE user_id = ? ORDER BY placed_at DESC, id DESC LIMIT ?", (user["id"], limit)
+        ).fetchall()
+        paid = [_view(conn, row) for row in rows]
+    return {
+        "failed_payments": [
+            {
+                "method": f["method"],
+                "amount": f["amount"],
+                "failed_at": f["failed_at"],
+                "charged": False,
+                "order_created": False,
+            }
+            for f in failed
+        ],
+        "orders": [
+            {
+                k: v
+                for k, v in {
+                    "order_id": o.get("id"),
+                    "status": o.get("status"),
+                    "payment_method": (o.get("payment") or {}).get("label"),
+                    "payment_status": (o.get("payment") or {}).get("statusLabel"),
+                    "total": o.get("total"),
+                    "refund": o.get("refund"),
+                }.items()
+                if v is not None
+            }
+            for o in paid
+        ],
+        "note": "A failed payment creates no order and charges nothing. Each order is paid once.",
+    }
+
+
 def user_id_for_email(email: str) -> Optional[str]:
     with db.read() as conn:
         user = conn.execute("SELECT id FROM users WHERE email = ?", (str(email or "").strip().lower(),)).fetchone()

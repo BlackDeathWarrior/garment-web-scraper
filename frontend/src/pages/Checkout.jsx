@@ -22,6 +22,8 @@ export default function Checkout() {
   const [payment, setPayment] = useState('cod')
   const [quote, setQuote] = useState(null)
   const [error, setError] = useState('')
+  // A payment that did not go through: the shopper can ask support straight away.
+  const [paymentFailed, setPaymentFailed] = useState(false)
   const [placing, setPlacing] = useState(false)
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function Checkout() {
   const place = async (e) => {
     e.preventDefault()
     setError('')
+    setPaymentFailed(false)
     setPlacing(true)
     try {
       const deliverTo = chosen === 'new' ? address : saved.find((a) => a.id === chosen)
@@ -65,6 +68,7 @@ export default function Checkout() {
       navigate(`/orders/${order.id}?placed=1`)
     } catch (err) {
       setError(err.message)
+      setPaymentFailed(err.reason === 'payment-failed')
       setPlacing(false)
     }
   }
@@ -160,6 +164,14 @@ export default function Checkout() {
             {error && (
               <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
                 {error}
+                {paymentFailed && (
+                  <>
+                    {' '}
+                    <Link to="/contact?topic=Payments&payment=failed" className="font-bold underline">
+                      Get help with this payment
+                    </Link>
+                  </>
+                )}
               </p>
             )}
             <button

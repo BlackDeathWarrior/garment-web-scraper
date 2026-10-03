@@ -120,6 +120,11 @@ def _create_ticket(req: Request) -> Response:
         category = CONTACT_TOPICS[topic]
         tags = ["contact-form"]
         metadata = {"form": "contact", "topic": topic}
+        if topic == "Payments" and data.get("payment") == "failed":
+            # Straight from a checkout whose payment did not go through: support's
+            # priority rules and the AI's payment lookup take it from there.
+            metadata["payment"] = "failed"
+            tags.append("payment-failed")
 
     if shopper is not None:
         customer = {"externalId": shopper.id, "email": shopper.email, "name": shopper.name}
@@ -371,6 +376,13 @@ def _tool_refund(req: Request) -> Response:
         return err.status, {"message": err.message}
 
 
+def _tool_payments(req: Request) -> Response:
+    email = _customer_email(req)
+    if not email:
+        return 400, {"message": "customer_email is required"}
+    return 200, orders.payments_for_email(email)
+
+
 def _tool_product(_: Request, product_id: str) -> Response:
     product = catalog.get(product_id)
     if product is None:
@@ -390,6 +402,7 @@ def _tools(req: Request, parts: list, method: str) -> Optional[Response]:
         return 401, {"message": "A valid tool token is required"}
     simple: Dict[Tuple[str, str], Callable[[], Response]] = {
         ("GET", "orders"): lambda: _tool_orders(req),
+        ("GET", "payments"): lambda: _tool_payments(req),
         ("GET", "products"): lambda: _tool_search(req),
         ("GET", "shop-status"): lambda: (200, simulation.status()),
         ("POST", "refunds"): lambda: _tool_refund(req),

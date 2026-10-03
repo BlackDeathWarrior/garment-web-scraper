@@ -122,6 +122,8 @@ def route(req: support.Request) -> Response:
             except orders.OrderError as err:
                 if err.reason == "payment-failed":
                     simulation.payment_failed(str(data.get("payment")))
+                    # Kept so that support can see what happened when the shopper asks.
+                    orders.record_failed_payment(user.id, data)
                 raise
         if parts == ["orders"] and method == "GET":
             return 200, {"ok": True, "orders": orders.list_for(user.id)}

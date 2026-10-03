@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { FiCheckCircle, FiMail, FiPackage, FiSend, FiUser } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 import { isShopper, useUser } from '../lib/auth'
@@ -8,6 +8,10 @@ import { createRequest, getSupportConfig, newRequestId, requestLink } from '../l
 /** A general message to support. Questions about an order start from the order's own page. */
 export default function Contact() {
   const user = useUser()
+  // From a failed checkout: the topic is chosen, and support is told the payment failed.
+  const [params] = useSearchParams()
+  const topic = params.get('topic')
+  const paymentFailed = params.get('payment') === 'failed'
   const [config, setConfig] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -35,6 +39,7 @@ export default function Contact() {
         email: fields.get('email'),
         subject: fields.get('subject'),
         message: fields.get('message'),
+        ...(paymentFailed ? { payment: 'failed' } : {}),
         requestId: requestId.current,
       })
       requestId.current = newRequestId()
@@ -151,7 +156,12 @@ export default function Contact() {
                 <label htmlFor="contact-subject" className={label}>
                   What is it about
                 </label>
-                <select id="contact-subject" name="subject" className={`${field} font-medium`}>
+                <select
+                  id="contact-subject"
+                  name="subject"
+                  defaultValue={topic && config.topics?.includes(topic) ? topic : undefined}
+                  className={`${field} font-medium`}
+                >
                   {(config.topics?.length ? config.topics : ['Feedback']).map((topic) => (
                     <option key={topic} value={topic}>
                       {topic}
