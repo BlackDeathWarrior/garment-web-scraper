@@ -89,6 +89,9 @@ export default function SupportWidget() {
         theme: THEME,
         strings: STRINGS,
         visitor: user ? { name: user.name, email: user.email || undefined } : undefined,
+        // A guest's chat is new every time and starts with their name and email;
+        // a signed-in shopper keeps their own conversation.
+        anonymous: 'fresh',
         context: getSupportContext(),
         identityToken,
       })
