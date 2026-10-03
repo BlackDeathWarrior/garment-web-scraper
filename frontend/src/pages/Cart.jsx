@@ -4,10 +4,21 @@ import { FiMinus, FiPlus, FiShoppingCart, FiTrash2 } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 import { api } from '../lib/api'
 import { useUser } from '../lib/auth'
-import { cartCount, cartItems, MAX_QUANTITY, removeFromCart, rupees, setQuantity, useCart } from '../lib/cart'
+import {
+  cartCount,
+  cartItems,
+  MAX_QUANTITY,
+  removeFromCart,
+  rupees,
+  setQuantity,
+  useCart,
+  useCartError,
+} from '../lib/cart'
 
 export default function Cart() {
   const lines = useCart()
+  // The shop refused a change (sold out, a full cart): the cart shows what it really holds.
+  const refused = useCartError()
   const user = useUser()
   const navigate = useNavigate()
   const [quote, setQuote] = useState(null)
@@ -40,6 +51,11 @@ export default function Cart() {
       <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-6">Your Cart</h1>
+        {refused && (
+          <p role="alert" className="text-sm text-red-700 mb-4">
+            {refused}
+          </p>
+        )}
 
         {lines.length === 0 ? (
           <div className="bg-white rounded-3xl border border-gray-100 p-10 text-center">
@@ -68,6 +84,9 @@ export default function Cart() {
                     )}
                     <p className="font-semibold text-gray-900 line-clamp-2">{line.title}</p>
                     {line.size && <p className="text-xs text-gray-500 mt-0.5">Size: {line.size}</p>}
+                    {line.available === false && (
+                      <p className="text-xs font-bold text-red-700 mt-0.5">Not available now. Remove it to check out.</p>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
                       <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-1">
                         <button

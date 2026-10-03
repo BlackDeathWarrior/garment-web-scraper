@@ -65,7 +65,7 @@ The browser never holds an API key. It calls the shop's server (`/api/support/*`
 
 ### What the desk's AI may ask the shop
 
-Every call carries `Authorization: Bearer <SUPPORT_TOOL_TOKEN>`. The order tools take the customer's email, which the desk fills in from the ticket (the AI cannot choose it), and answer only about that customer's orders.
+Every call carries `Authorization: Bearer <SUPPORT_TOOL_TOKEN>`. The order and cart tools take the customer's email, which the desk fills in from the ticket (the AI cannot choose it), and answer only about that customer's orders and cart.
 
 | Route | What it does |
 | --- | --- |
@@ -75,8 +75,12 @@ Every call carries `Authorization: Bearer <SUPPORT_TOOL_TOKEN>`. The order tools
 | `POST /api/support/tools/refunds` | Refunds a delivered order in full. The desk runs this only after a supervisor approves it. Asking twice refunds once |
 | `GET /api/support/tools/shop-status` | Whether payments and the carrier are working, and how many orders are delayed |
 | `GET /api/support/tools/products?query=`, `GET /api/support/tools/products/{id}` | Product search and lookup |
+| `GET /api/support/tools/cart?customer_email=` | What is in the customer's cart: each item with its size, quantity and price, and the subtotal |
+| `POST /api/support/tools/cart/items` | Sets how many of one product, in one size, the cart holds (`product_id`, `size`, `quantity` from 0 to 5). 0 takes it out; without a size, in every size. Saying the same thing twice changes nothing |
 
 An order that is not that customer's is answered exactly like an order that does not exist.
+
+The cart of a signed-in shopper is kept by the shop (`shop/cart.py`, table `cart_items`), which is why support can reach it from any channel; a guest's cart stays in their browser and is folded into the account's at sign-in. Support can fill a cart and never empty a wallet: no tool checks out or pays, so the shopper sees every change before anything is ordered. An open page re-reads the cart every five seconds, so a change made in the chat shows without a reload.
 
 ## Settings
 
@@ -87,7 +91,23 @@ In `.env` at the repository root (see `frontend/.env.example`).
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The admin's sign-in |
 | `SHOP_SESSION_SECRET` | Signs sessions. Without it one is made on first use and kept in the shop's database |
 | `SHOP_STEP_SECONDS` | Seconds an order stays at each step (same as `--step-seconds`) |
-| `SHOP_DB` | Where the database file is (default `outputs/shop/shop.db`) |
+| `SHOP_DATABASE_URL` | The shop's PostgreSQL database, e.g. `postgresql://ethnic_threads:<password>@localhost:5442/ethnic_threads`. Needs `pip install "psycopg[binary]"`. Without it the shop uses the SQLite file below |
+| `SHOP_DB` | Where the SQLite file is (default `outputs/shop/shop.db`). Used when `SHOP_DATABASE_URL` is not set: a fresh clone and the tests |
+
+### The shop's database
+
+The shop keeps its accounts, addresses, orders, the admin's switches and the carts in a database of its own, never in the support desk's. `shop/db.py` is the only file that knows which kind it is: the rest of the shop writes one SQL and reads the same rows either way.
+
+- **PostgreSQL** (`SHOP_DATABASE_URL`): real times and dates, checked quantities, connections kept open between requests. The tables are created on first use. One writer at a time, as with the file (a lock held for each transaction), because the shop's code reads a counter and then writes it.
+- **A new PostgreSQL database** needs a role and a database, and nothing else:
+
+  ```sql
+  CREATE ROLE ethnic_threads LOGIN PASSWORD '<a password of your own>';
+  CREATE DATABASE ethnic_threads OWNER ethnic_threads;
+  ```
+
+- **Moving from the file:** stop the shop's server, run `python -m shop.to_postgres`, start it again. Everything is copied in one transaction, sessions stay valid, and the file is left untouched as the copy to go back to.
+- In the demo the database lives on the demo stack's PostgreSQL server (port 5442). Removing that stack's volumes removes the shop's data with it.
 | `SUPPORT_API_URL` | Where the support desk is served. Without it, everything below is off |
 | `SUPPORT_API_KEY_WEB` | Shoppers' requests (a key with the ticket scope) |
 | `SUPPORT_API_KEY_EVENTS` | Incidents (a key with the incident scope) |

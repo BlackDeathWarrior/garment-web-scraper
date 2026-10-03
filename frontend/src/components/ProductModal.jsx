@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiX, FiShoppingCart, FiInfo, FiTruck, FiStar, FiCheck, FiZap } from 'react-icons/fi'
-import { addToCart, MAX_QUANTITY, rupees, SIZES } from '../lib/cart'
+import { addToCart, MAX_QUANTITY, rupees, SIZES, useCartError } from '../lib/cart'
 
 /** A product, with what a shop needs: a size, a quantity, the cart and "buy now". */
 export default function ProductModal({ product, onClose }) {
   const [size, setSize] = useState('M')
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  // A signed-in shopper's cart is the shop's: it can refuse (a full cart).
+  const refused = useCartError()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -144,8 +146,8 @@ export default function ProductModal({ product, onClose }) {
                     onClick={add}
                     className="bg-white border-2 border-maroon-700 text-maroon-700 hover:bg-maroon-50 font-bold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2"
                   >
-                    {added ? <FiCheck /> : <FiShoppingCart />}
-                    {added ? 'Added to cart' : 'Add to cart'}
+                    {added && !refused ? <FiCheck /> : <FiShoppingCart />}
+                    {added && !refused ? 'Added to cart' : 'Add to cart'}
                   </button>
                   <button
                     onClick={buyNow}
@@ -154,6 +156,11 @@ export default function ProductModal({ product, onClose }) {
                     <FiZap /> Buy now
                   </button>
                 </div>
+                {added && refused && (
+                  <p role="alert" className="text-sm text-red-700 text-center">
+                    {refused}
+                  </p>
+                )}
               </>
             )}
           </div>

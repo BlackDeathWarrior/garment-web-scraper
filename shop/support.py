@@ -3,7 +3,7 @@
 The plumbing (the desk's client, the webhook receiver, the event log, the
 incident reports) is shared with scraper/support. What is the shop's own is
 here: requests are about orders, they belong to signed-in shoppers, and the
-tools the desk's AI calls read and change orders.
+tools the desk's AI calls read and change orders and the shopper's cart.
 
 Who may do what:
 
@@ -13,8 +13,8 @@ Who may do what:
   request back with the tracking token in its link.
 - The admin reads any request, and replies to or rates none.
 - The desk's AI calls /api/support/tools/* with SUPPORT_TOOL_TOKEN. Every
-  order tool takes the customer's email, which the desk fills in from the
-  ticket, and answers only about that customer's orders.
+  order and cart tool takes the customer's email, which the desk fills in
+  from the ticket, and answers only about that customer's orders and cart.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from scraper.support import config, events, tokens
 from scraper.support import routes as desk
 from scraper.support.tms_support import TmsError, sign_chat_identity
-from shop import catalog, orders, simulation
+from shop import cart, catalog, orders, simulation
 from shop.auth import Identity
 
 PREFIX = desk.PREFIX
@@ -389,6 +389,45 @@ def _tool_payments(req: Request) -> Response:
     return 200, orders.payments_for_email(email)
 
 
+def _tool_cart_facts(contents: Dict[str, Any]) -> Dict[str, Any]:
+    """The cart as support reads it: what is in it and what it comes to, without the pictures."""
+    keys = (("product_id", "productId"), ("title", "title"), ("size", "size"), ("quantity", "quantity"))
+    items = []
+    for item in contents["items"]:
+        facts = {name: item[key] for name, key in keys if item[key] is not None}
+        if item["price"] is not None:
+            facts["price"] = item["price"]
+        facts["available"] = item["available"]
+        items.append(facts)
+    return {"items": items, "count": contents["count"], "subtotal": contents["subtotal"], "currency": orders.CURRENCY}
+
+
+def _tool_cart(req: Request, change: bool) -> Response:
+    """Reads the customer's cart, or sets how many of one item it holds (0 takes it out).
+
+    Support can fill a cart and never empty a wallet: there is no tool that
+    checks out, so the shopper sees every change before anything is ordered.
+    """
+    data = req.json() if change else None
+    email = _customer_email(req, data)
+    if not email:
+        return 400, {"message": "customer_email is required"}
+    user_id = orders.user_id_for_email(email)
+    if user_id is None:
+        return 404, {
+            "message": "No shop account uses this customer's email address. They need to sign in to the shop first."
+        }
+    if not change:
+        return 200, _tool_cart_facts(cart.view(user_id))
+    try:
+        changed, contents = cart.set_item(
+            user_id, data.get("product_id"), data.get("size"), data.get("quantity"), by_support=True
+        )
+    except orders.OrderError as err:
+        return err.status, {"message": err.message}
+    return 200, {"changed": changed, **_tool_cart_facts(contents)}
+
+
 def _tool_product(_: Request, product_id: str) -> Response:
     product = catalog.get(product_id)
     if product is None:
@@ -409,6 +448,7 @@ def _tools(req: Request, parts: list, method: str) -> Optional[Response]:
     simple: Dict[Tuple[str, str], Callable[[], Response]] = {
         ("GET", "orders"): lambda: _tool_orders(req),
         ("GET", "payments"): lambda: _tool_payments(req),
+        ("GET", "cart"): lambda: _tool_cart(req, change=False),
         ("GET", "products"): lambda: _tool_search(req),
         ("GET", "shop-status"): lambda: (200, simulation.status()),
         ("POST", "refunds"): lambda: _tool_refund(req),
@@ -421,6 +461,8 @@ def _tools(req: Request, parts: list, method: str) -> Optional[Response]:
         return _tool_cancel(req, parts[2])
     if len(parts) == 3 and parts[1] == "products" and method == "GET":
         return _tool_product(req, parts[2])
+    if parts[1:] == ["cart", "items"] and method == "POST":
+        return _tool_cart(req, change=True)
     return None
 
 

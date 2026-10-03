@@ -7,6 +7,7 @@ The storefront (frontend/) calls it through the Vite proxy. Everything is
 JSON under /api:
 
     auth      POST /api/auth/register, /api/auth/login   GET /api/auth/me
+    cart      GET /api/cart   PUT /api/cart/items   POST /api/cart/merge
     checkout  POST /api/checkout/quote   POST /api/orders
     orders    GET /api/orders, /api/orders/{id}   POST /api/orders/{id}/cancel, /return
     account   GET /api/addresses
@@ -37,7 +38,7 @@ except Exception:  # pragma: no cover - optional
     load_dotenv = None
 
 from scraper.support import routes as desk  # noqa: E402
-from shop import auth, catalog, orders, simulation, support, switches  # noqa: E402
+from shop import auth, cart, catalog, orders, simulation, support, switches  # noqa: E402
 
 MAX_BODY_BYTES = desk.MAX_BODY_BYTES
 Response = Tuple[int, Dict[str, Any]]
@@ -107,8 +108,17 @@ def route(req: support.Request) -> Response:
         if parts == ["checkout", "quote"] and method == "POST":
             return 200, {"ok": True, **orders.quote(data)}
 
-        if parts[:1] in (["orders"], ["addresses"]) and (user is None or user.role != "shopper"):
+        if parts[:1] in (["orders"], ["addresses"], ["cart"]) and (user is None or user.role != "shopper"):
             return _fail(401, "sign-in-required", "Sign in to continue.")
+
+        # ---- Cart: a signed-in shopper's; a guest's stays in their browser ----
+        if parts == ["cart"] and method == "GET":
+            return 200, {"ok": True, "cart": cart.view(user.id)}
+        if parts == ["cart", "items"] and method == "PUT":
+            _, contents = cart.set_item(user.id, data.get("productId"), data.get("size"), data.get("quantity"))
+            return 200, {"ok": True, "cart": contents}
+        if parts == ["cart", "merge"] and method == "POST":
+            return 200, {"ok": True, "cart": cart.merge(user.id, data.get("items"))}
 
         if parts == ["addresses"] and method == "GET":
             return 200, {"ok": True, "addresses": orders.addresses(user.id)}

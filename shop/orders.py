@@ -232,6 +232,11 @@ def place(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
                 ),
             )
         _event(conn, order_id, "placed", at=db.iso(placed))
+        # The order was placed from the cart, so the cart is empty now. Imported
+        # here because shop.cart needs this module's limits.
+        from shop import cart
+
+        cart.clear(conn, user_id)
         if payload.get("saveAddress"):
             _save_address(conn, user_id, address)
         return _view(conn, _row(conn, order_id))
