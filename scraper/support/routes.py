@@ -271,8 +271,10 @@ def _request_view(ticket: Dict[str, Any], messages: List[Dict[str, Any]]) -> Dic
         "subject": ticket.get("subject"),
         "status": status.get("name"),
         "state": status.get("state"),
-        # Who answers now ("ai", "human", "handed_over", "none"): the page shows the assistant writing.
+        # Who answers now ("ai", "human", "handed_over", "none").
         "handling": ticket.get("handling"),
+        # The desk says when the assistant is writing an answer it will send: the page shows dots.
+        "replying": ticket.get("replying"),
         "createdAt": ticket.get("createdAt"),
         "updatedAt": ticket.get("updatedAt"),
         "productId": ticket.get("externalRef"),

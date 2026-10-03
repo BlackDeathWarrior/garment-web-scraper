@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { FiArrowLeft, FiInbox, FiPackage, FiSend, FiStar } from 'react-icons/fi'
+import { FiArrowLeft, FiInbox, FiLock, FiPackage, FiSend, FiStar } from 'react-icons/fi'
 import Navbar from '../components/Navbar'
 import { isShopper, useUser } from '../lib/auth'
 import {
@@ -37,13 +37,36 @@ const AUTHORS = { customer: 'You', assistant: 'Support assistant', support: 'Sup
 
 /**
  * The shopper's message the assistant is answering right now, or null. The
- * support desk says who answers a request (`handling`); when that is the
- * assistant and the shopper wrote last, an answer is being written.
+ * support desk says so (`replying`: the assistant is writing an answer it will
+ * send itself; when a person checks its answers first, nobody is typing yet).
+ * A desk too old to say falls back on who answers (`handling`) and who wrote last.
  */
 export function awaitedMessage(request) {
-  if (!request || request.handling !== 'ai' || request.state === 'closed') return null
+  if (!request || request.state === 'closed') return null
   const last = request.messages[request.messages.length - 1]
-  return last && last.from === 'customer' ? last : null
+  if (!last || last.from !== 'customer') return null
+  if (typeof request.replying === 'boolean') return request.replying ? last : null
+  return request.handling === 'ai' ? last : null
+}
+
+/**
+ * The status in words a shopper uses. The desk's own status names ("AI
+ * handling", "Human assigned") are for its staff; `state` is the same for every
+ * desk, and `handling` says whether a person has it.
+ */
+export function shopperStatus(request) {
+  switch (request?.state) {
+    case 'closed':
+      return 'Closed'
+    case 'resolved':
+      return 'Solved'
+    case 'pending':
+      return 'Waiting for your reply'
+    default:
+      if (request?.handling === 'human') return 'A colleague is on it'
+      if (request?.handling === 'handed_over') return 'Passed to our team'
+      return 'Open'
+  }
 }
 
 export default function RequestStatus() {
@@ -123,9 +146,9 @@ function RequestList() {
                 <span className="block text-sm font-semibold text-gray-900 truncate">{request.subject || 'Request'}</span>
               </span>
               <span className="shrink-0 text-right">
-                {request.status && (
+                {request.state && (
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${STATE_STYLES[request.state] || STATE_STYLES.open}`}>
-                    {request.status}
+                    {shopperStatus(request)}
                   </span>
                 )}
                 <span className="block text-xs text-gray-400 mt-1">{formatWhen(request.updatedAt)}</span>
@@ -236,8 +259,9 @@ function RequestDetail({ reference }) {
             <span
               data-testid="request-status"
               className={`px-3 py-1 rounded-full text-xs font-bold border ${STATE_STYLES[request.state] || STATE_STYLES.open}`}
+              title={request.status || undefined}
             >
-              {request.status}
+              {shopperStatus(request)}
             </span>
           </div>
 
@@ -253,8 +277,14 @@ function RequestDetail({ reference }) {
               You are reading this as the shop's admin. Replies and ratings are the shopper's own.
             </p>
           )}
-          {request.mine && request.state === 'resolved' && !isRated(reference) && (
+          {request.mine && (request.state === 'resolved' || request.state === 'closed') && !isRated(reference) && (
             <Rating reference={reference} token={token} subject={request.subject} />
+          )}
+          {request.mine && request.state === 'closed' && <Closed request={request} />}
+          {request.mine && request.state === 'resolved' && (
+            <p className="text-sm text-gray-500 mb-3">
+              We think this is sorted. If it is not, write below and the request opens again.
+            </p>
           )}
           {request.mine && request.state !== 'closed' && <Reply reference={reference} token={token} onSent={load} />}
         </>
@@ -279,6 +309,29 @@ function Message({ message }) {
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.body}</p>
       </div>
     </li>
+  )
+}
+
+/**
+ * A closed request takes no more messages: say so, and offer a new one with
+ * the old reference in it, so support can find what was said before.
+ */
+function Closed({ request }) {
+  // An order's requests start from the order, so support knows which order it is.
+  const again = request.orderId ? `/orders/${request.orderId}` : `/contact?${new URLSearchParams({ about: request.reference })}`
+  return (
+    <div data-testid="request-closed" className="bg-white rounded-2xl border border-gray-100 px-4 py-4 text-sm text-gray-700">
+      <p className="flex items-center gap-2 font-semibold text-gray-900">
+        <FiLock size={14} /> This request is closed
+      </p>
+      <p className="mt-1">
+        Closed requests take no new messages. Need more help with this?{' '}
+        <Link to={again} className="font-bold text-maroon-700 hover:underline">
+          Start a new request
+        </Link>
+        {request.orderId ? ' from the order’s page.' : ' and we will see this one too.'}
+      </p>
+    </div>
   )
 }
 

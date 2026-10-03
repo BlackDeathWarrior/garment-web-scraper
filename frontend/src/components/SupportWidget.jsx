@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useUser } from '../lib/auth'
 import { chatIdentity, getSupportConfig, getSupportContext, onSupportContext } from '../lib/support'
 
@@ -8,6 +9,9 @@ const STRINGS = {
   title: 'Ethnic Threads support',
   intro: 'Ask about an order, a product or the site. Sign in and we can look up your orders for you.',
 }
+
+// Pages where a chat bubble gets in the way or makes no sense: signing in, paying, and the shop's own admin.
+const NO_CHAT = [/^\/login/, /^\/register/, /^\/checkout/, /^\/admin/]
 
 // The support desk may be restarting when the page loads: try again a few times, further apart.
 const RETRY_AFTER_MS = [3000, 10000, 30000]
@@ -47,8 +51,11 @@ export default function SupportWidget() {
   const user = useUser()
   // Signing in or out starts the chat again as that person.
   const who = user ? `${user.role}:${user.id}` : 'guest'
+  const { pathname } = useLocation()
+  const hidden = NO_CHAT.some((page) => page.test(pathname))
 
   useEffect(() => {
+    if (hidden) return undefined
     let chat = null
     let stopListening = () => {}
     let cancelled = false
@@ -96,7 +103,7 @@ export default function SupportWidget() {
       chat?.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [who])
+  }, [who, hidden])
 
   return null
 }

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { FiSearch, FiSliders, FiX, FiShoppingCart, FiPackage, FiInbox, FiUser, FiLogOut, FiSettings } from 'react-icons/fi'
+import { FiInbox, FiLogOut, FiMail, FiPackage, FiSearch, FiSettings, FiShoppingCart, FiSliders, FiUser, FiX } from 'react-icons/fi'
 import { clearSession, isAdmin, isShopper, useUser } from '../lib/auth'
 import { cartCount, useCart } from '../lib/cart'
 
@@ -69,6 +69,12 @@ export default function Navbar({ search, onSearch, onMenuToggle }) {
             <Link to="/orders" className={link}>
               <FiPackage size={16} />
               <span className="hidden md:inline">Orders</span>
+            </Link>
+          )}
+          {!isAdmin(user) && (
+            <Link to="/contact" className={link} aria-label="Contact us">
+              <FiMail size={16} />
+              <span className="hidden md:inline">Contact</span>
             </Link>
           )}
           <Link to="/requests" className={link} aria-label="Help">

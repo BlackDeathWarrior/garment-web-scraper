@@ -12,6 +12,8 @@ export default function Contact() {
   const [params] = useSearchParams()
   const topic = params.get('topic')
   const paymentFailed = params.get('payment') === 'failed'
+  // From a closed request: the new one says which request it follows.
+  const previous = /^[A-Z]{2,10}-\d{1,9}$/.test(params.get('about') || '') ? params.get('about') : null
   const [config, setConfig] = useState(null)
   const [receipt, setReceipt] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -40,6 +42,7 @@ export default function Contact() {
         subject: fields.get('subject'),
         message: fields.get('message'),
         ...(paymentFailed ? { payment: 'failed' } : {}),
+        ...(previous ? { previous } : {}),
         requestId: requestId.current,
       })
       requestId.current = newRequestId()
@@ -174,6 +177,11 @@ export default function Contact() {
                 <label htmlFor="contact-message" className={label}>
                   Your message
                 </label>
+                {previous && (
+                  <p className="text-xs text-gray-500" data-testid="contact-previous">
+                    Following up on {previous}: support will see that request too.
+                  </p>
+                )}
                 <textarea id="contact-message" name="message" required rows={4} className={field} placeholder="How can we help?" />
               </div>
 

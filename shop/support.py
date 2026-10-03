@@ -125,6 +125,11 @@ def _create_ticket(req: Request) -> Response:
             # priority rules and the AI's payment lookup take it from there.
             metadata["payment"] = "failed"
             tags.append("payment-failed")
+        previous = desk.text(data.get("previous"), 30).upper()
+        if previous and _REFERENCE.match(previous):
+            # Written again after a closed request: support can read the earlier one.
+            metadata["previous_request"] = previous
+            tags.append("follow-up")
 
     if shopper is not None:
         customer = {"externalId": shopper.id, "email": shopper.email, "name": shopper.name}
@@ -196,6 +201,7 @@ def _my_requests(req: Request) -> Response:
                 "subject": t.get("subject"),
                 "status": (t.get("status") or {}).get("name"),
                 "state": (t.get("status") or {}).get("state"),
+                "handling": t.get("handling"),
                 "orderId": t.get("externalRef") if orders.ORDER_ID.match(str(t.get("externalRef") or "")) else None,
                 "createdAt": t.get("createdAt"),
                 "updatedAt": t.get("updatedAt"),
