@@ -11,7 +11,6 @@ import hmac
 import os
 import re
 import secrets
-import sqlite3
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -71,7 +70,7 @@ def register(name: str, email: str, password: str) -> Identity:
                 "INSERT INTO users(id, email, name, password_hash, salt, created_at) VALUES(?,?,?,?,?,?)",
                 (user_id, email, name, _hash(password, salt), salt, db.iso()),
             )
-    except sqlite3.IntegrityError:
+    except db.IntegrityError:
         raise AuthError(409, "email-taken", "An account with this email already exists. Sign in instead.") from None
     return Identity(user_id, "shopper", name, email)
 
